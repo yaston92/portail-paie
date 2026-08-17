@@ -3,15 +3,21 @@ import { isCabinetRole } from "@/lib/types";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ProfilEditForm } from "@/components/profil-edit-form";
+import { SupprimerCompte } from "@/components/supprimer-compte";
 import { Card, CardBody, PageHeader } from "@/components/ui";
 
 export default async function ComptePage() {
   const profile = await getProfile();
   if (!profile) redirect("/login");
 
-  const retour = isCabinetRole(profile.role)
-    ? "/cabinet/compte"
-    : roleHome(profile.role);
+  const retour =
+    profile.role === "client"
+      ? "/client/parametres"
+      : profile.role === "salarie"
+        ? "/salarie/parametres"
+        : isCabinetRole(profile.role)
+          ? "/cabinet/compte"
+          : roleHome(profile.role);
 
   return (
     <main className="flex-1 max-w-2xl w-full mx-auto px-4 py-6 space-y-6">
@@ -34,6 +40,7 @@ export default async function ComptePage() {
           />
         </CardBody>
       </Card>
+      <SupprimerCompte />
     </main>
   );
 }

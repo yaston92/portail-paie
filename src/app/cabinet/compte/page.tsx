@@ -5,6 +5,7 @@ import {
 } from "@/lib/cabinet";
 import { ROLES_CABINET } from "@/lib/types";
 import { Button, Card, CardBody, PageHeader } from "@/components/ui";
+import { SupprimerCompte } from "@/components/supprimer-compte";
 
 /** Hub Compte — même structure que l’onglet Compte de l’app. */
 export default async function CabinetComptePage() {
@@ -60,6 +61,8 @@ export default async function CabinetComptePage() {
           Déconnexion
         </Button>
       </form>
+
+      <SupprimerCompte />
     </div>
   );
 }

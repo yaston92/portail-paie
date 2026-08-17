@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { OppositionToggle } from "@/components/opposition-toggle";
+import { SupprimerCompte } from "@/components/supprimer-compte";
 import { Badge, Card, CardBody, PageHeader } from "@/components/ui";
 import type { Salarie } from "@/lib/types";
 
@@ -46,12 +47,14 @@ export default async function SalarieParametresPage() {
           <h2 className="font-semibold mb-2">Vos données personnelles</h2>
           <p className="text-sm text-gray-600">
             Vos données sont hébergées dans l&apos;Union européenne et
-            conservées selon les durées légales. Pour toute demande d&apos;accès,
-            de rectification ou de suppression, adressez-vous à votre employeur
-            ou au cabinet.
+            conservées selon les durées légales. Vous pouvez supprimer votre
+            compte ci-dessous. Pour les autres demandes (accès, rectification),
+            contactez votre employeur ou le cabinet.
           </p>
         </CardBody>
       </Card>
+
+      <SupprimerCompte />
     </div>
   );
 }

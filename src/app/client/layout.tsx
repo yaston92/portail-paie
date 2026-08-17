@@ -24,6 +24,7 @@ export default async function ClientLayout({
     { href: "/client/arrets-maladie", label: "Arrêts maladie" },
     { href: "/client/variables", label: "Variables de paie" },
     { href: "/client/bulletins", label: "Bulletins" },
+    { href: "/client/parametres", label: "Paramètres" },
   ];
 
   return (

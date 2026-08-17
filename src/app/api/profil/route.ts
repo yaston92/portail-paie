@@ -9,6 +9,7 @@ import {
 } from "@/lib/email";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { supprimerCompteUtilisateur } from "@/lib/supprimer-compte";
 
 const schema = z.object({
   nom: z.string().trim().min(1, "Nom requis").max(100),
@@ -194,4 +195,26 @@ export async function PATCH(request: Request) {
     emailPending: emailChange,
     emailPendingAddress: emailChange ? email : undefined,
   });
+}
+
+/** Suppression du compte de l'utilisateur connecté (web + mobile). */
+export async function DELETE() {
+  const profile = await getApiProfile();
+  if (!profile) {
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  }
+
+  try {
+    await supprimerCompteUtilisateur(profile.id);
+  } catch (e) {
+    console.error("[profil] suppression:", e);
+    return NextResponse.json(
+      { error: "Suppression impossible. Réessayez ou contactez le support." },
+      { status: 500 }
+    );
+  }
+
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  return NextResponse.json({ ok: true });
 }

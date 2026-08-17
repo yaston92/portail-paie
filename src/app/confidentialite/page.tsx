@@ -79,7 +79,8 @@ export default function ConfidentialitePage() {
             <p>
               Les données sont hébergées dans l&apos;Union européenne et
               conservées le temps nécessaire au service et aux obligations
-              légales. Vous pouvez demander l&apos;accès, la rectification ou
+              légales. Vous pouvez supprimer votre compte depuis Paramètres.
+              Vous pouvez aussi demander l&apos;accès, la rectification ou
               la suppression à {LEGAL.emailContact}. Réclamation possible
               auprès de la CNIL.
             </p>
