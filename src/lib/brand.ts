@@ -1,5 +1,5 @@
 /**
- * Identité visuelle ETIK Expertise / ETIK Paie.
+ * Identité visuelle ETIK Paie.
  *
  * Thème actuel : `etik` (rouge / bordeaux du logo).
  * Pour revenir au bleu d’origine (sans toucher au reste du code métier) :

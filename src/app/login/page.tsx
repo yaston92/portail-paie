@@ -39,16 +39,13 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
           <Image
-            src="/logo-etik.png"
-            alt="ETIK Expertise"
-            width={72}
-            height={72}
-            className="mx-auto mb-3 rounded-2xl shadow-sm"
+            src="/logo-etik-paie.png"
+            alt="ETIK Paie"
+            width={220}
+            height={147}
+            className="mx-auto mb-3 h-auto w-[220px]"
             priority
           />
-          <h1 className="text-2xl font-bold text-blue-900 tracking-tight">
-            ETIK Paie
-          </h1>
         </div>
         <Card>
           <CardBody>

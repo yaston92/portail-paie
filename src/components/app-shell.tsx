@@ -3,7 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 export interface NavItem {
   href: string;
@@ -20,6 +26,137 @@ interface AppShellProps {
   /** Lien du nom utilisateur (défaut : /compte). */
   compteHref?: string;
   children: ReactNode;
+}
+
+function Chevron({ direction }: { direction: "left" | "right" }) {
+  return (
+    <svg
+      className="w-4 h-4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      viewBox="0 0 24 24"
+      aria-hidden
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d={
+          direction === "left"
+            ? "M15.75 19.5L8.25 12l7.5-7.5"
+            : "M8.25 4.5l7.5 7.5-7.5 7.5"
+        }
+      />
+    </svg>
+  );
+}
+
+function NavOnglets({
+  items,
+  estActif,
+}: {
+  items: NavItem[];
+  estActif: (href: string) => boolean;
+}) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [peutGauche, setPeutGauche] = useState(false);
+  const [peutDroite, setPeutDroite] = useState(false);
+  const pathname = usePathname();
+
+  const actualiser = useCallback(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    setPeutGauche(el.scrollLeft > 2);
+    setPeutDroite(max > 2 && el.scrollLeft < max - 2);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    actualiser();
+    el.addEventListener("scroll", actualiser, { passive: true });
+    const ro = new ResizeObserver(actualiser);
+    ro.observe(el);
+    window.addEventListener("resize", actualiser);
+    return () => {
+      el.removeEventListener("scroll", actualiser);
+      ro.disconnect();
+      window.removeEventListener("resize", actualiser);
+    };
+  }, [actualiser, items]);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const actif = el.querySelector<HTMLElement>('[data-nav-actif="true"]');
+    actif?.scrollIntoView({
+      inline: "nearest",
+      block: "nearest",
+      behavior: "smooth",
+    });
+    actualiser();
+  }, [pathname, actualiser]);
+
+  function scrollPar(dir: -1 | 1) {
+    const el = scrollerRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * Math.max(160, el.clientWidth * 0.6), behavior: "smooth" });
+  }
+
+  const afficherFleches = peutGauche || peutDroite;
+
+  return (
+    <div className="max-w-7xl mx-auto px-2 sm:px-4 flex items-stretch gap-0.5">
+      {afficherFleches && (
+        <button
+          type="button"
+          onClick={() => scrollPar(-1)}
+          disabled={!peutGauche}
+          aria-label="Onglets précédents"
+          className="shrink-0 self-center p-1.5 rounded-lg text-blue-100 hover:bg-blue-700 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-default"
+        >
+          <Chevron direction="left" />
+        </button>
+      )}
+      <div
+        ref={scrollerRef}
+        role="navigation"
+        aria-label="Navigation principale"
+        className="flex-1 min-w-0 flex gap-1 overflow-x-auto scrollbar-none"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
+        {items.map((item) => {
+          const actif = estActif(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              data-nav-actif={actif ? "true" : undefined}
+              className={`whitespace-nowrap px-3 py-2.5 text-sm rounded-t-xl transition-colors shrink-0 ${
+                actif
+                  ? "bg-gray-100 text-blue-800 font-semibold"
+                  : "text-blue-100 hover:bg-blue-700"
+              }`}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+      </div>
+      {afficherFleches && (
+        <button
+          type="button"
+          onClick={() => scrollPar(1)}
+          disabled={!peutDroite}
+          aria-label="Onglets suivants"
+          className="shrink-0 self-center p-1.5 rounded-lg text-blue-100 hover:bg-blue-700 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-default"
+        >
+          <Chevron direction="right" />
+        </button>
+      )}
+    </div>
+  );
 }
 
 export function AppShell({
@@ -43,18 +180,18 @@ export function AppShell({
   return (
     <div className="flex-1 flex flex-col min-h-screen bg-gray-100">
       <header className="bg-blue-800 text-white shadow-sm">
-        <div className="max-w-3xl mx-auto px-4 flex items-center justify-between h-14">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-14">
           <div className="flex items-center gap-3 min-w-0">
             <Link
               href={items[0]?.href ?? "/"}
               className="flex items-center gap-2.5 font-bold text-lg min-w-0"
             >
               <Image
-                src="/logo-etik.png"
-                alt="ETIK Expertise"
-                width={36}
+                src="/logo-etik-paie.png"
+                alt="ETIK Paie"
+                width={110}
                 height={36}
-                className="rounded-lg shrink-0 bg-white"
+                className="h-9 w-auto shrink-0 bg-white rounded-md object-contain"
                 priority
               />
               <span className="truncate">{titre}</span>
@@ -107,23 +244,9 @@ export function AppShell({
             </form>
           </div>
         </div>
-        <nav className="max-w-3xl mx-auto px-4 flex gap-1 overflow-x-auto scrollbar-none">
-          {items.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`whitespace-nowrap px-3 py-2.5 text-sm rounded-t-xl transition-colors ${
-                estActif(item.href)
-                  ? "bg-gray-100 text-blue-800 font-semibold"
-                  : "text-blue-100 hover:bg-blue-700"
-              }`}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <NavOnglets items={items} estActif={estActif} />
       </header>
-      <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-5">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-5">
         {children}
       </main>
     </div>

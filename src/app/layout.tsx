@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "ETIK Paie",
   description:
-    "Portail d'échanges entre le cabinet ETIK Expertise, les clients employeurs et leurs salariés",
+    "Portail d'échanges entre le cabinet, les clients employeurs et leurs salariés",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

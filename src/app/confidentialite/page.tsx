@@ -15,11 +15,11 @@ export default function ConfidentialitePage() {
       <article className="mx-auto max-w-2xl px-4 py-10">
         <header className="text-center mb-8">
           <Image
-            src="/logo-etik.png"
-            alt={LEGAL.editeur}
-            width={64}
-            height={64}
-            className="mx-auto mb-3 rounded-2xl shadow-sm"
+            src="/logo-etik-paie.png"
+            alt="ETIK Paie"
+            width={200}
+            height={133}
+            className="mx-auto mb-3 h-auto w-[200px]"
           />
           <h1 className="text-2xl font-bold text-blue-900">
             Politique de confidentialité
