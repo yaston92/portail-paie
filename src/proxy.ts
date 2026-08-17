@@ -10,6 +10,7 @@ const CHEMINS_PUBLICS = [
   "/definir-mot-de-passe",
   "/confidentialite",
   "/privacy",
+  "/contact",
 ];
 
 export async function proxy(request: NextRequest) {
@@ -18,7 +19,8 @@ export async function proxy(request: NextRequest) {
   // Pages légales : accessibles sans compte, sans lecture de session.
   if (
     pathname.startsWith("/confidentialite") ||
-    pathname.startsWith("/privacy")
+    pathname.startsWith("/privacy") ||
+    pathname.startsWith("/contact")
   ) {
     return NextResponse.next({ request });
   }

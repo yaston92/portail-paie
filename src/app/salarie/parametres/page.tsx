@@ -1,5 +1,6 @@
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
 import { OppositionToggle } from "@/components/opposition-toggle";
 import { SupprimerCompte } from "@/components/supprimer-compte";
 import { Badge, Card, CardBody, PageHeader } from "@/components/ui";
@@ -19,6 +20,17 @@ export default async function SalarieParametresPage() {
   return (
     <div className="max-w-xl space-y-6">
       <PageHeader titre="Paramètres" />
+
+      <Link href="/contact" className="block">
+        <Card className="transition-colors hover:border-blue-300 hover:bg-blue-50/40">
+          <CardBody className="py-4 flex items-center justify-between gap-3">
+            <span className="font-semibold text-gray-900">Signaler un problème</span>
+            <span className="text-gray-400" aria-hidden>
+              ›
+            </span>
+          </CardBody>
+        </Card>
+      </Link>
 
       <Card>
         <CardBody>

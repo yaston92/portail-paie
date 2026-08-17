@@ -6,9 +6,15 @@ interface EmailParams {
   to: { email: string; name?: string }[];
   subject: string;
   html: string;
+  replyTo?: { email: string; name?: string };
 }
 
-export async function envoyerEmail({ to, subject, html }: EmailParams): Promise<boolean> {
+export async function envoyerEmail({
+  to,
+  subject,
+  html,
+  replyTo,
+}: EmailParams): Promise<boolean> {
   const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) {
     console.warn("[email] BREVO_API_KEY absente : email non envoyé :", subject);
@@ -28,6 +34,7 @@ export async function envoyerEmail({ to, subject, html }: EmailParams): Promise<
       to,
       subject,
       htmlContent: html,
+      ...(replyTo ? { replyTo } : {}),
     }),
   });
   if (!res.ok) {

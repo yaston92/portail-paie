@@ -142,6 +142,10 @@ export default function InscriptionPage() {
           <Link href="/confidentialite" className="hover:underline">
             Politique de confidentialité
           </Link>
+          {" · "}
+          <Link href="/contact" className="hover:underline">
+            Contact
+          </Link>
         </p>
       </div>
     </main>

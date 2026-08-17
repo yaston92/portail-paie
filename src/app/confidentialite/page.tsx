@@ -87,9 +87,13 @@ export default function ConfidentialitePage() {
           </section>
         </div>
 
-        <p className="text-center text-sm mt-8">
+        <p className="text-center text-sm mt-8 space-x-3">
           <Link href="/login" className="text-blue-700 hover:underline">
             Retour à la connexion
+          </Link>
+          <span className="text-gray-300">·</span>
+          <Link href="/contact" className="text-blue-700 hover:underline">
+            Contact
           </Link>
         </p>
       </article>

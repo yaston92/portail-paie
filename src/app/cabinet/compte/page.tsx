@@ -35,6 +35,17 @@ export default async function CabinetComptePage() {
         </Card>
       </Link>
 
+      <Link href="/contact" className="block">
+        <Card className="transition-colors hover:border-blue-300 hover:bg-blue-50/40">
+          <CardBody className="py-4 flex items-center justify-between gap-3">
+            <span className="font-semibold text-gray-900">Signaler un problème</span>
+            <span className="text-gray-400" aria-hidden>
+              ›
+            </span>
+          </CardBody>
+        </Card>
+      </Link>
+
       {estAdmin && (
         <div className="space-y-2 pt-1">
           <p className="text-sm font-bold text-gray-900">Administration</p>
