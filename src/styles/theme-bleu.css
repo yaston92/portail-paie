@@ -1,0 +1,7 @@
+/**
+ * Thème bleu d’origine (avant logo ETIK).
+ * Réactive les bleus Tailwind par défaut : ce fichier ne surcharge rien.
+ * Activer via globals.css + THEME_ACTIF = "bleu" dans src/lib/brand.ts.
+ */
+
+/* Intentionnellement vide : palette blue-* = défaut Tailwind. */

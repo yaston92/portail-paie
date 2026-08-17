@@ -1,0 +1,21 @@
+/**
+ * Thème ETIK (logo) : remappe la palette Tailwind `blue-*` vers le rouge / bordeaux.
+ * Les classes existantes (bg-blue-700, text-blue-800, etc.) suivent automatiquement.
+ *
+ * Restauration bleu : importer `theme-bleu.css` à la place dans globals.css
+ * et passer THEME_ACTIF à "bleu" dans src/lib/brand.ts.
+ */
+
+@theme inline {
+  --color-blue-50: #fdf5f4;
+  --color-blue-100: #fce8e6;
+  --color-blue-200: #f9d0cc;
+  --color-blue-300: #f0a8a0;
+  --color-blue-400: #e07065;
+  --color-blue-500: #d14a3d;
+  --color-blue-600: #c63d2f;
+  --color-blue-700: #b3352a;
+  --color-blue-800: #932924;
+  --color-blue-900: #6f1f1c;
+  --color-blue-950: #3f1110;
+}

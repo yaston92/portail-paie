@@ -1,0 +1,7 @@
+{
+  "crons": [
+    { "path": "/api/cron/relances", "schedule": "0 8 * * *" },
+    { "path": "/api/cron/ouverture-campagnes", "schedule": "5 8 * * *" },
+    { "path": "/api/cron/retention", "schedule": "30 2 * * *" }
+  ]
+}
