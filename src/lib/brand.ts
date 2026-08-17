@@ -28,7 +28,7 @@ const PALETTE_BLEU = {
   primaryMuted: "#eff6ff",
 } as const;
 
-export const BRAND =
-  THEME_ACTIF === "bleu" ? PALETTE_BLEU : PALETTE_ETIK;
+const PALETTES = { etik: PALETTE_ETIK, bleu: PALETTE_BLEU } as const;
+export const BRAND = PALETTES[THEME_ACTIF];
 
 export const BRAND_NAME = "ETIK Paie";

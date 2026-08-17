@@ -21,6 +21,7 @@ function salarie(partiel: Partial<Salarie> & Pick<Salarie, "id" | "nom" | "preno
     email: null,
     date_entree: null,
     date_sortie: null,
+    motif_sortie: null,
     statut: "actif",
     type_contrat: null,
     cdd_duree: null,

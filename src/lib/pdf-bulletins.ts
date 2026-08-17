@@ -113,7 +113,6 @@ export async function extraireTextesPages(pdf: Buffer): Promise<string[]> {
     data: octetsPdf(pdf),
     useSystemFonts: true,
     standardFontDataUrl: standardFontsUrl(),
-    isEvalSupported: false,
     useWorkerFetch: false,
     verbosity: 0,
   });

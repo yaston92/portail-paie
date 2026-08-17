@@ -11,9 +11,9 @@ const nextConfig: NextConfig = {
   // Uploads embauche (PDF / photos) : défaut proxy = 10 Mo → corps tronqué → FormData cassé
   experimental: {
     proxyClientMaxBodySize: "50mb",
-  },
-  serverActions: {
-    bodySizeLimit: "50mb",
+    serverActions: {
+      bodySizeLimit: "50mb",
+    },
   },
 };
 

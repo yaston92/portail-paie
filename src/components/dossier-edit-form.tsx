@@ -29,7 +29,7 @@ export function DossierEditForm({
     startTransition(async () => {
       try {
         const result = await modifierDossier(dossier.id, fd);
-        if (result?.error) {
+        if (result && "error" in result) {
           toastError(result.error);
           return;
         }
