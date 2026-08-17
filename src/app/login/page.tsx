@@ -98,6 +98,11 @@ export default function LoginPage() {
             </form>
           </CardBody>
         </Card>
+        <p className="text-center text-xs text-gray-500 mt-4">
+          <Link href="/confidentialite" className="hover:underline">
+            Politique de confidentialité
+          </Link>
+        </p>
       </div>
     </main>
   );

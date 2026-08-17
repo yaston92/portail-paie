@@ -8,10 +8,20 @@ const CHEMINS_PUBLICS = [
   "/auth",
   "/mot-de-passe-oublie",
   "/definir-mot-de-passe",
+  "/confidentialite",
+  "/privacy",
 ];
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Pages légales : accessibles sans compte, sans lecture de session.
+  if (
+    pathname.startsWith("/confidentialite") ||
+    pathname.startsWith("/privacy")
+  ) {
+    return NextResponse.next({ request });
+  }
 
   // Les routes API s'authentifient elles-mêmes (cookies web OU Bearer mobile).
   // Ne jamais rediriger vers /login ici : l'app Expo n'a pas de cookies Next.
