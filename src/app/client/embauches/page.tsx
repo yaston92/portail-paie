@@ -38,7 +38,8 @@ export default async function ClientEmbauchesPage({
     .from("embauches")
     .select("*")
     .eq("dossier_id", profile.dossier_id!)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(200);
   const embauches = (data ?? []) as Embauche[];
 
   return (

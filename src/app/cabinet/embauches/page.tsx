@@ -10,7 +10,7 @@ import {
   Td,
   Th,
 } from "@/components/ui";
-import type { Dossier, Embauche } from "@/lib/types";
+import type { Embauche } from "@/lib/types";
 
 function Tableau({
   lignes,
@@ -77,22 +77,22 @@ export default async function CabinetEmbauchesPage() {
   }
   const supabase = await createClient();
 
-  const [{ data: embauches }, { data: dossiers }] = await Promise.all([
-    supabase
-      .from("embauches")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(200),
-    supabase.from("dossiers").select("id, sigle").eq("cabinet_id", cabinet!.id),
-  ]);
+  const { data: embauches } = await supabase
+    .from("embauches")
+    .select("*, dossiers!inner(sigle)")
+    .eq("dossiers.cabinet_id", cabinet!.id)
+    .order("created_at", { ascending: false })
+    .limit(200);
 
-  const dossierIds = new Set((dossiers ?? []).map((d) => d.id));
-  const sigleParDossier = new Map(
-    ((dossiers ?? []) as Pick<Dossier, "id" | "sigle">[]).map((d) => [d.id, d.sigle])
-  );
-  const liste = ((embauches ?? []) as Embauche[]).filter((e) =>
-    dossierIds.has(e.dossier_id)
-  );
+  const sigleParDossier = new Map<string, string>();
+  const liste = ((embauches ?? []) as (Embauche & {
+    dossiers: { sigle: string } | { sigle: string }[] | null;
+  })[]).map((row) => {
+    const joint = Array.isArray(row.dossiers) ? row.dossiers[0] : row.dossiers;
+    if (joint?.sigle) sigleParDossier.set(row.dossier_id, joint.sigle);
+    const { dossiers: _dossier, ...embauche } = row;
+    return embauche;
+  });
   const enAttente = liste.filter((e) => e.statut === "envoye");
   const autres = liste.filter((e) => e.statut !== "envoye");
 

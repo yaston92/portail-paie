@@ -15,18 +15,16 @@ export interface AccesClientInfo {
 
 export async function getAccesClientDossier(dossierId: string): Promise<AccesClientInfo> {
   const admin = createAdminClient();
-  const { data: dossier } = await admin
-    .from("dossiers")
-    .select("email")
-    .eq("id", dossierId)
-    .maybeSingle();
-
-  const { data: clients } = await admin
-    .from("profiles")
-    .select("id, email, created_at, doit_changer_mot_de_passe")
-    .eq("dossier_id", dossierId)
-    .eq("role", "client")
-    .order("created_at", { ascending: false });
+  const [{ data: dossier }, { data: clients }] = await Promise.all([
+    admin.from("dossiers").select("email").eq("id", dossierId).maybeSingle(),
+    admin
+      .from("profiles")
+      .select("id, email, created_at, doit_changer_mot_de_passe")
+      .eq("dossier_id", dossierId)
+      .eq("role", "client")
+      .order("created_at", { ascending: false })
+      .limit(5),
+  ]);
 
   if (!clients?.length) {
     return {

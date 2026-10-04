@@ -20,18 +20,16 @@ export default async function CabinetEmbaucheDetailPage({
 
   const { data } = await supabase
     .from("embauches")
-    .select("*")
+    .select("*, dossiers(*)")
     .eq("id", id)
     .maybeSingle();
   if (!data) notFound();
-  const e = data as Embauche;
-
-  const { data: dossier } = await supabase
-    .from("dossiers")
-    .select("*")
-    .eq("id", e.dossier_id)
-    .single();
-  const d = dossier as Dossier;
+  const row = data as Embauche & { dossiers: Dossier | Dossier[] | null };
+  const dossierJoint = Array.isArray(row.dossiers) ? row.dossiers[0] : row.dossiers;
+  if (!dossierJoint) notFound();
+  const { dossiers: _dossier, ...embauche } = row;
+  const e = embauche as Embauche;
+  const d = dossierJoint;
 
   return (
     <div className="max-w-2xl space-y-4">

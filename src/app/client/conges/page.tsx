@@ -12,7 +12,8 @@ export default async function ClientCongesPage() {
     .from("demandes_conge")
     .select("*, salaries(nom, prenom)")
     .eq("dossier_id", profile.dossier_id!)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(200);
 
   const demandes = (data ?? []) as (DemandeConge & {
     salaries?: { nom: string; prenom: string } | null;

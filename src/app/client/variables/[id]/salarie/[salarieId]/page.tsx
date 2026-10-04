@@ -21,32 +21,34 @@ export default async function SaisieSalariePage({
   const { id, salarieId } = await params;
   const supabase = await createClient();
 
-  const [{ data: campagneData }, { data: salarieData }] = await Promise.all([
-    supabase
-      .from("campagnes")
-      .select("*")
-      .eq("id", id)
-      .eq("dossier_id", profile.dossier_id!)
-      .maybeSingle(),
-    supabase
-      .from("salaries")
-      .select("*")
-      .eq("id", salarieId)
-      .eq("dossier_id", profile.dossier_id!)
-      .maybeSingle(),
-  ]);
+  const [{ data: campagneData }, { data: salarieData }, { data: saisieExistante }] =
+    await Promise.all([
+      supabase
+        .from("campagnes")
+        .select("*")
+        .eq("id", id)
+        .eq("dossier_id", profile.dossier_id!)
+        .maybeSingle(),
+      supabase
+        .from("salaries")
+        .select("*")
+        .eq("id", salarieId)
+        .eq("dossier_id", profile.dossier_id!)
+        .maybeSingle(),
+      supabase
+        .from("saisies_variables")
+        .select("*")
+        .eq("campagne_id", id)
+        .eq("salarie_id", salarieId)
+        .maybeSingle(),
+    ]);
   if (!campagneData || !salarieData) notFound();
   const campagne = campagneData as Campagne;
   const salarie = salarieData as Salarie;
   const verrouillee = campagne.statut !== "ouverte";
 
   // Saisie : créée si absente (possible uniquement campagne ouverte)
-  let { data: saisie } = await supabase
-    .from("saisies_variables")
-    .select("*")
-    .eq("campagne_id", id)
-    .eq("salarie_id", salarieId)
-    .maybeSingle();
+  let saisie = saisieExistante;
   if (!saisie && !verrouillee) {
     const { data: nouvelle } = await supabase
       .from("saisies_variables")

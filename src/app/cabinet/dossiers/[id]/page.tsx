@@ -40,6 +40,7 @@ export default async function DossierDetailPage({
     { data: salaries },
     accesClient,
     { data: campagneMois },
+    { data: membresRows },
   ] = await Promise.all([
     supabase.from("dossiers").select("*").eq("id", id).maybeSingle(),
     supabase
@@ -54,20 +55,23 @@ export default async function DossierDetailPage({
       .eq("dossier_id", id)
       .eq("mois", mois)
       .maybeSingle(),
+    supabase
+      .from("cabinet_membres")
+      .select("cabinet_id, profile:profiles (id, nom, prenom)"),
   ]);
 
   if (!dossier) notFound();
   const d = dossier as Dossier;
 
-  const { data: membresRows } = await supabase
-    .from("cabinet_membres")
-    .select("profile:profiles (id, nom, prenom)")
-    .eq("cabinet_id", d.cabinet_id);
   const collaborateurs: Pick<Profile, "id" | "nom" | "prenom">[] = [];
   for (const row of membresRows ?? []) {
-    const p = (row as unknown as { profile?: Pick<Profile, "id" | "nom" | "prenom"> | null })
-      .profile;
-    if (p) collaborateurs.push(p);
+    const ligne = row as unknown as {
+      cabinet_id?: string;
+      profile?: Pick<Profile, "id" | "nom" | "prenom"> | null;
+    };
+    if (ligne.cabinet_id === d.cabinet_id && ligne.profile) {
+      collaborateurs.push(ligne.profile);
+    }
   }
 
   const tous = (salaries ?? []) as Salarie[];

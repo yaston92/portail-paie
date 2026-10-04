@@ -22,7 +22,7 @@ export default async function ClientSalarieDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data }, { data: arretsData }] = await Promise.all([
+  const [{ data }, { data: arretsData }, acces] = await Promise.all([
     supabase
       .from("salaries")
       .select("*")
@@ -35,12 +35,12 @@ export default async function ClientSalarieDetailPage({
       .eq("dossier_id", profile.dossier_id!)
       .eq("salarie_id", id)
       .order("created_at", { ascending: false }),
+    getAccesSalarie(id),
   ]);
 
   if (!data) notFound();
   const s = data as Salarie;
   const arrets = (arretsData ?? []) as ArretMaladie[];
-  const acces = await getAccesSalarie(s.id);
 
   return (
     <div className="space-y-6">

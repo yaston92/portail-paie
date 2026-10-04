@@ -25,35 +25,34 @@ export default async function CabinetBulletinsPage({
 
   const supabase = await createClient();
 
-  const { data: dossiers } = await supabase
-    .from("dossiers")
-    .select("id, sigle, raison_sociale")
-    .eq("archive", false)
-    .eq("cabinet_id", cabinet.id)
-    .order("sigle");
+  const [{ data: dossiers }, { data: uploads }] = await Promise.all([
+    supabase
+      .from("dossiers")
+      .select("id, sigle, raison_sociale")
+      .eq("archive", false)
+      .eq("cabinet_id", cabinet.id)
+      .order("sigle"),
+    supabase
+      .from("bulletin_uploads")
+      .select("id, mois, dossier_id, dossiers!inner(cabinet_id)")
+      .eq("dossiers.cabinet_id", cabinet.id)
+      .order("mois", { ascending: false }),
+  ]);
 
   const listeDossiers = (dossiers ?? []) as Pick<
     Dossier,
     "id" | "sigle" | "raison_sociale"
   >[];
-  const idsDossiers = listeDossiers.map((d) => d.id);
+  const idsDossiers = new Set(listeDossiers.map((d) => d.id));
 
-  let listeUploads: Pick<BulletinUpload, "id" | "mois" | "dossier_id">[] = [];
-  if (idsDossiers.length > 0) {
-    let uploadsQuery = supabase
-      .from("bulletin_uploads")
-      .select("id, mois, dossier_id")
-      .in("dossier_id", idsDossiers)
-      .order("mois", { ascending: false });
-    if (sp.dossier && idsDossiers.includes(sp.dossier)) {
-      uploadsQuery = uploadsQuery.eq("dossier_id", sp.dossier);
-    }
-    const { data: uploads } = await uploadsQuery;
-    listeUploads = (uploads ?? []) as Pick<
-      BulletinUpload,
-      "id" | "mois" | "dossier_id"
-    >[];
-  }
+  const listeUploads = ((uploads ?? []) as Pick<
+    BulletinUpload,
+    "id" | "mois" | "dossier_id"
+  >[]).filter(
+    (u) =>
+      idsDossiers.has(u.dossier_id) &&
+      (!sp.dossier || u.dossier_id === sp.dossier)
+  );
 
   const counts = new Map<string, number>();
   for (const u of listeUploads) {

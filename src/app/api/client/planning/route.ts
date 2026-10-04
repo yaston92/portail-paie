@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   const supabase = await createClient();
   const dossierId = profile.dossier_id;
 
-  const [{ data: salariesData }, { data: conges }, { data: arrets }, { data: campagnes }] =
+  const [{ data: salariesData }, { data: conges }, { data: arrets }, { data: absences }] =
     await Promise.all([
       supabase
         .from("salaries")
@@ -50,38 +50,29 @@ export async function GET(request: Request) {
         .lte("date_debut", jour)
         .gte("date_fin", jour),
       supabase
-        .from("campagnes")
-        .select("id")
+        .from("absences")
+        .select("nature, saisies_variables!inner(salarie_id)")
         .eq("dossier_id", dossierId)
-        .eq("mois", `${jour.slice(0, 7)}-01`),
+        .eq("jour", jour),
     ]);
 
   const salaries = ((salariesData ?? []) as Salarie[]).filter((s) =>
     estActifLeJour(s, jour)
   );
 
-  const campagneIds = (campagnes ?? []).map((c) => c.id as string);
   const absenceParSalarie = new Map<string, AbsenceNature>();
-  if (campagneIds.length > 0) {
-    const { data: saisies } = await supabase
-      .from("saisies_variables")
-      .select("id, salarie_id")
-      .in("campagne_id", campagneIds);
-    const saisieIds = (saisies ?? []).map((s) => s.id as string);
-    if (saisieIds.length > 0) {
-      const { data: absences } = await supabase
-        .from("absences")
-        .select("saisie_id, nature")
-        .eq("jour", jour)
-        .in("saisie_id", saisieIds);
-      const saisieToSalarie = new Map(
-        (saisies ?? []).map((s) => [s.id as string, s.salarie_id as string])
-      );
-      for (const a of absences ?? []) {
-        const sid = saisieToSalarie.get(a.saisie_id as string);
-        if (sid) absenceParSalarie.set(sid, a.nature as AbsenceNature);
+  for (const a of absences ?? []) {
+    const saisie = (
+      a as {
+        nature: AbsenceNature;
+        saisies_variables:
+          | { salarie_id: string }
+          | { salarie_id: string }[]
+          | null;
       }
-    }
+    ).saisies_variables;
+    const joint = Array.isArray(saisie) ? saisie[0] : saisie;
+    if (joint?.salarie_id) absenceParSalarie.set(joint.salarie_id, a.nature as AbsenceNature);
   }
 
   const maladieSet = new Set((arrets ?? []).map((a) => a.salarie_id as string));

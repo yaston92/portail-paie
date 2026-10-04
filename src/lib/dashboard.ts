@@ -54,10 +54,18 @@ export async function calculerDashboard(
   const [{ data: dossiersData }, { data: campagnesData }, { data: collabs }] =
     await Promise.all([
       dossierQuery,
-      supabase
-        .from("campagnes")
-        .select("id, dossier_id, mois, statut, date_limite")
-        .eq("mois", mois),
+      cabinetId
+        ? supabase
+            .from("campagnes")
+            .select(
+              "id, dossier_id, mois, statut, date_limite, dossiers!inner(cabinet_id)"
+            )
+            .eq("mois", mois)
+            .eq("dossiers.cabinet_id", cabinetId)
+        : supabase
+            .from("campagnes")
+            .select("id, dossier_id, mois, statut, date_limite")
+            .eq("mois", mois),
       cabinetId
         ? supabase
             .from("cabinet_membres")
@@ -73,7 +81,7 @@ export async function calculerDashboard(
   const dossiers = (dossiersData ?? []) as Dossier[];
   const dossierIds = dossiers.map((d) => d.id);
   const campagneParDossier = new Map(
-    ((campagnesData ?? []) as Campagne[])
+    ((campagnesData ?? []) as unknown as Campagne[])
       .filter((c) => dossierIds.includes(c.dossier_id))
       .map((c) => [c.dossier_id, c])
   );

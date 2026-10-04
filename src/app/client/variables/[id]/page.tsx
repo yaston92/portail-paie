@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { saisieComplete, salariesAttendus } from "@/lib/campagne";
+import { etatCampagne, saisieComplete } from "@/lib/campagne";
 import { chargerNotes } from "@/lib/notes";
 import { formatDate, moisLabel } from "@/lib/format";
 import {
@@ -20,7 +20,7 @@ import {
   CardBody,
   PageHeader,
 } from "@/components/ui";
-import type { Campagne, SaisieVariables } from "@/lib/types";
+import type { Campagne } from "@/lib/types";
 
 export default async function ClientCampagnePage({
   params,
@@ -71,41 +71,15 @@ export default async function ClientCampagnePage({
   const verrouillee =
     campagne.statut === "envoyee" || campagne.statut === "bulletins_envoyes";
 
-  // Une seule lecture salariés : upsert des saisies manquantes puis état + notes
-  const attendus = await salariesAttendus(
-    supabase,
-    profile.dossier_id!,
-    campagne.mois
-  );
-  if (!verrouillee && attendus.length > 0) {
-    await supabase.from("saisies_variables").upsert(
-      attendus.map((s) => ({
-        campagne_id: id,
-        salarie_id: s.id,
-        dossier_id: profile.dossier_id!,
-      })),
-      { onConflict: "campagne_id,salarie_id", ignoreDuplicates: true }
-    );
-  }
-
-  const [{ data: saisiesData }, notesMois] = await Promise.all([
-    supabase.from("saisies_variables").select("*").eq("campagne_id", id),
+  // La fiche salarié crée la saisie à l'ouverture : pas d'écriture à chaque affichage.
+  const [etat, notesMois] = await Promise.all([
+    etatCampagne(supabase, id, profile.dossier_id!, campagne.mois),
     chargerNotes(supabase, {
       dossierId: profile.dossier_id!,
       campagneId: id,
       salarieId: null,
     }),
   ]);
-  const saisiesParSalarie = new Map(
-    ((saisiesData ?? []) as SaisieVariables[]).map((s) => [s.salarie_id, s])
-  );
-  const incomplets = attendus.filter((s) => !saisieComplete(saisiesParSalarie.get(s.id)));
-  const etat = {
-    attendus,
-    saisiesParSalarie,
-    completes: attendus.length - incomplets.length,
-    incomplets,
-  };
 
   const pct =
     etat.attendus.length > 0

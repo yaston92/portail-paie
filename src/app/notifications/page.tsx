@@ -26,12 +26,19 @@ export default async function NotificationsPage() {
   const { data } = await supabase
     .from("notifications")
     .select("*")
+    .eq("user_id", profile.id)
     .order("created_at", { ascending: false })
     .limit(100);
   const notifications = (data ?? []) as Notification[];
 
-  // Marque tout comme lu à l'ouverture
-  await supabase.from("notifications").update({ lu: true }).eq("lu", false);
+  const nonLuesVisibles = notifications.some((n) => !n.lu);
+  if (nonLuesVisibles || notifications.length === 100) {
+    await supabase
+      .from("notifications")
+      .update({ lu: true })
+      .eq("user_id", profile.id)
+      .eq("lu", false);
+  }
 
   return (
     <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">

@@ -38,34 +38,32 @@ export default async function CabinetBulletinsMoisPage({
 
   const supabase = await createClient();
 
-  const { data: dossiers } = await supabase
-    .from("dossiers")
-    .select("id, sigle, raison_sociale")
-    .eq("archive", false)
-    .eq("cabinet_id", cabinet.id)
-    .order("sigle");
+  const [{ data: dossiers }, { data: uploads }] = await Promise.all([
+    supabase
+      .from("dossiers")
+      .select("id, sigle, raison_sociale")
+      .eq("archive", false)
+      .eq("cabinet_id", cabinet.id)
+      .order("sigle"),
+    supabase
+      .from("bulletin_uploads")
+      .select("*, dossiers!inner(cabinet_id)")
+      .eq("mois", mois)
+      .eq("dossiers.cabinet_id", cabinet.id)
+      .order("created_at", { ascending: false }),
+  ]);
 
   const listeDossiers = (dossiers ?? []) as Pick<
     Dossier,
     "id" | "sigle" | "raison_sociale"
   >[];
-  const idsDossiers = listeDossiers.map((d) => d.id);
+  const idsDossiers = new Set(listeDossiers.map((d) => d.id));
   const sigleParDossier = new Map(listeDossiers.map((d) => [d.id, d.sigle]));
-
-  let listeUploads: BulletinUpload[] = [];
-  if (idsDossiers.length > 0) {
-    let uploadsQuery = supabase
-      .from("bulletin_uploads")
-      .select("*")
-      .eq("mois", mois)
-      .in("dossier_id", idsDossiers)
-      .order("created_at", { ascending: false });
-    if (sp.dossier && idsDossiers.includes(sp.dossier)) {
-      uploadsQuery = uploadsQuery.eq("dossier_id", sp.dossier);
-    }
-    const { data: uploads } = await uploadsQuery;
-    listeUploads = (uploads ?? []) as BulletinUpload[];
-  }
+  const listeUploads = ((uploads ?? []) as BulletinUpload[]).filter(
+    (u) =>
+      idsDossiers.has(u.dossier_id) &&
+      (!sp.dossier || u.dossier_id === sp.dossier)
+  );
 
   const retourHref = sp.dossier
     ? `/cabinet/bulletins?dossier=${sp.dossier}`

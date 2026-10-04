@@ -39,19 +39,25 @@ export default async function CabinetCampagnesPage({
 
   let dossierQuery = supabase
     .from("dossiers")
-    .select("*")
+    .select("id, sigle, raison_sociale, archive, cabinet_id")
     .eq("archive", false)
     .eq("cabinet_id", cabinetId)
     .order("sigle");
   if (sp.dossier) dossierQuery = dossierQuery.eq("id", sp.dossier);
   const [{ data: dossiers }, { data: campagnes }] = await Promise.all([
     dossierQuery,
-    supabase.from("campagnes").select("*").eq("mois", mois),
+    supabase
+      .from("campagnes")
+      .select(
+        "id, dossier_id, mois, statut, date_limite, envoyee_at, derniere_relance_at, paies_identiques, dossiers!inner(cabinet_id)"
+      )
+      .eq("mois", mois)
+      .eq("dossiers.cabinet_id", cabinetId),
   ]);
 
   const listeDossiers = (dossiers ?? []) as Dossier[];
   const campagneParDossier = new Map(
-    ((campagnes ?? []) as Campagne[]).map((c) => [c.dossier_id, c])
+    ((campagnes ?? []) as unknown as Campagne[]).map((c) => [c.dossier_id, c])
   );
   const sansCampagne = listeDossiers.filter((d) => !campagneParDossier.has(d.id));
 

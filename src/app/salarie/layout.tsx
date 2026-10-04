@@ -13,6 +13,7 @@ export default async function SalarieLayout({
   const { count } = await supabase
     .from("notifications")
     .select("id", { count: "exact", head: true })
+    .eq("user_id", profile.id)
     .eq("lu", false);
 
   const items: NavItem[] = [
