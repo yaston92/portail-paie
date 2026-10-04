@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { formatDate, formatMontant } from "@/lib/format";
+import { formatDate } from "@/lib/format";
+import { texteDureeHebdo, texteSalaire } from "@/lib/embauche-affichage";
 import { EmbaucheForm } from "@/components/embauche-form";
 import { Alert, Badge, Card, CardBody, PageHeader } from "@/components/ui";
 import type { Embauche } from "@/lib/types";
@@ -43,6 +44,12 @@ export default async function ClientEmbaucheDetailPage({
   return (
     <div className="max-w-2xl space-y-4">
       <PageHeader titre={`Embauche : ${e.nom} ${e.prenom}`} />
+      {e.accompagnement && (
+        <Alert variant="info">
+          Vous avez demandé à être rappelé. Le cabinet vous contactera pour
+          compléter ce qui manque.
+        </Alert>
+      )}
       {e.statut === "envoye" && (
         <Alert variant="info">
           Déclaration envoyée le {formatDate(e.created_at.slice(0, 10))}, en
@@ -58,11 +65,11 @@ export default async function ClientEmbaucheDetailPage({
         <CardBody>
           <dl className="text-sm grid grid-cols-2 gap-x-4 gap-y-2">
             <dt className="text-gray-500">Poste</dt>
-            <dd>{e.poste}</dd>
+            <dd>{e.poste || "-"}</dd>
             <dt className="text-gray-500">Début de contrat</dt>
             <dd>{formatDate(e.date_debut)}</dd>
             <dt className="text-gray-500">Contrat</dt>
-            <dd>{e.type_contrat.toUpperCase()}</dd>
+            <dd>{e.type_contrat ? e.type_contrat.toUpperCase() : "-"}</dd>
             {e.type_contrat === "cdd" && e.cdd_duree && (
               <>
                 <dt className="text-gray-500">Date de fin</dt>
@@ -74,13 +81,13 @@ export default async function ClientEmbaucheDetailPage({
               </>
             )}
             <dt className="text-gray-500">Durée hebdomadaire</dt>
-            <dd>{e.duree_hebdo} h</dd>
+            <dd>{texteDureeHebdo(e.duree_hebdo)}</dd>
             <dt className="text-gray-500">Salaire</dt>
             <dd>
               {e.salaire_minimum ? (
                 <Badge variant="blue">Salaire minimum</Badge>
               ) : (
-                formatMontant(e.salaire)
+                texteSalaire(e)
               )}
             </dd>
             {e.note && (

@@ -16,7 +16,7 @@ export async function POST(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const profile = await getApiProfile(["admin_cabinet", "collaborateur"]);
+  const profile = await getApiProfile(["directeur", "admin_cabinet", "collaborateur"]);
   if (!profile) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
@@ -65,13 +65,23 @@ export async function POST(
   }
 
   // Rattache les pièces au salarié (documents sensibles, soumis à rétention)
-  const pieces: { type_document: string; chemin: string }[] = [
-    { type_document: "piece_identite_recto", chemin: embauche.piece_identite_recto_chemin },
-    { type_document: "piece_identite_verso", chemin: embauche.piece_identite_verso_chemin },
-  ];
+  const pieces: { type_document: string; chemin: string }[] = [];
+  if (embauche.piece_identite_recto_chemin) {
+    pieces.push({
+      type_document: "piece_identite_recto",
+      chemin: embauche.piece_identite_recto_chemin,
+    });
+  }
+  if (embauche.piece_identite_verso_chemin) {
+    pieces.push({
+      type_document: "piece_identite_verso",
+      chemin: embauche.piece_identite_verso_chemin,
+    });
+  }
   if (embauche.carte_vitale_chemin) {
     pieces.push({ type_document: "carte_vitale", chemin: embauche.carte_vitale_chemin });
   }
+  if (pieces.length > 0) {
   await admin.from("salarie_documents").insert(
     pieces.map((p) => ({
       salarie_id: salarie.id,
@@ -83,6 +93,7 @@ export async function POST(
       uploaded_by: embauche.created_by,
     }))
   );
+  }
 
   await admin
     .from("embauches")

@@ -29,7 +29,7 @@ export function DossierEditForm({
     startTransition(async () => {
       try {
         const result = await modifierDossier(dossier.id, fd);
-        if (result && "error" in result) {
+        if (result && "error" in result && result.error) {
           toastError(result.error);
           return;
         }
@@ -63,6 +63,24 @@ export function DossierEditForm({
         <div>
           <Label>Téléphone</Label>
           <Input name="telephone" defaultValue={dossier.telephone ?? ""} />
+        </div>
+        <div>
+          <Label>SIRET</Label>
+          <Input
+            name="siret"
+            inputMode="numeric"
+            placeholder="14 chiffres"
+            maxLength={17}
+            defaultValue={dossier.siret ?? ""}
+          />
+        </div>
+        <div>
+          <Label>Convention collective</Label>
+          <Input
+            name="convention_collective"
+            placeholder="ex. IDCC 1979 ou nom de la convention"
+            defaultValue={dossier.convention_collective ?? ""}
+          />
         </div>
       </div>
       <div>

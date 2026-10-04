@@ -34,7 +34,7 @@ export default async function NotificationsPage() {
   await supabase.from("notifications").update({ lu: true }).eq("lu", false);
 
   return (
-    <main className="flex-1 max-w-3xl w-full mx-auto px-4 py-6">
+    <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
       <PageHeader
         titre="Notifications"
         actions={

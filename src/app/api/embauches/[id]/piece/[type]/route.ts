@@ -10,10 +10,15 @@ import type { Embauche } from "@/lib/types";
  * Accès : cabinet (portefeuille) ou client du dossier : via RLS. Journalisé.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string; type: string }> }
 ) {
-  const profile = await getApiProfile(["admin_cabinet", "collaborateur", "client"]);
+  const profile = await getApiProfile([
+    "directeur",
+    "admin_cabinet",
+    "collaborateur",
+    "client",
+  ]);
   if (!profile) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
@@ -55,9 +60,15 @@ export async function GET(
     const contenu = await telechargerFichier("documents", chemin);
     const nom = chemin.split("/").pop() ?? "piece";
     const ext = nom.includes(".") ? nom.split(".").pop()!.toLowerCase() : "bin";
+    const telecharger = new URL(request.url).searchParams.get("telecharger") === "1";
+    const estImage = ["png", "jpg", "jpeg", "gif", "webp", "heic"].includes(ext);
+    const disposition =
+      telecharger || !estImage
+        ? `attachment; filename="${nom.replace(/"/g, "")}"`
+        : `inline; filename="${nom.replace(/"/g, "")}"`;
     return new NextResponse(new Uint8Array(contenu), {
       headers: {
-        "Content-Disposition": `attachment; filename="${nom.replace(/"/g, "")}"`,
+        "Content-Disposition": disposition,
         "Content-Type": contentTypePourExtension(ext),
         "Cache-Control": "private, no-store",
       },

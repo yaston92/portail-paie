@@ -37,6 +37,8 @@ export interface Profile {
   telephone: string | null;
   dossier_id: string | null;
   salarie_id: string | null;
+  /** Mot de passe provisoire posé par le cabinet : à changer à la connexion. */
+  doit_changer_mot_de_passe?: boolean;
   created_at: string;
 }
 
@@ -61,6 +63,8 @@ export interface Dossier {
   raison_sociale: string;
   email: string | null;
   telephone: string | null;
+  siret: string | null;
+  convention_collective: string | null;
   collaborateur_id: string | null;
   archive: boolean;
   created_at: string;
@@ -108,15 +112,19 @@ export interface Embauche {
   prenom: string;
   nir: string | null;
   carte_vitale_chemin: string | null;
-  piece_identite_recto_chemin: string;
-  piece_identite_verso_chemin: string;
-  date_debut: string;
-  type_contrat: ContratType;
+  piece_identite_recto_chemin: string | null;
+  piece_identite_verso_chemin: string | null;
+  date_debut: string | null;
+  type_contrat: ContratType | null;
   cdd_duree: string | null;
-  duree_hebdo: number;
+  duree_hebdo: number | null;
   salaire: number | null;
   salaire_minimum: boolean;
-  poste: string;
+  /** brut ou net, quand un montant est saisi. */
+  salaire_type: "brut" | "net" | null;
+  /** Le client veut être rappelé : les autres champs peuvent être incomplets. */
+  accompagnement: boolean;
+  poste: string | null;
   note: string | null;
   commentaire_retour: string | null;
   salarie_id: string | null;

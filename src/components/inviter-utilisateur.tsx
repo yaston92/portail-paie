@@ -38,24 +38,39 @@ export function InviterUtilisateur({
   const [roleChoisi, setRoleChoisi] = useState<UserRole>(
     role === "choix_cabinet" ? "collaborateur" : role
   );
+  const [password, setPassword] = useState("");
   const [etat, setEtat] = useState<"idle" | "envoi" | "ok" | "erreur">("idle");
   const [message, setMessage] = useState("");
+  const estClient = role === "client";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (estClient && password.length < 8) {
+      setEtat("erreur");
+      setMessage("Le mot de passe provisoire doit contenir au moins 8 caractères.");
+      toastError("Le mot de passe provisoire doit contenir au moins 8 caractères.");
+      return;
+    }
     setEtat("envoi");
-    const res = await fetch("/api/utilisateurs/inviter", {
+    const url = estClient
+      ? `/api/dossiers/${dossierId}/acces-client`
+      : "/api/utilisateurs/inviter";
+    const res = await fetch(url, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        email,
-        nom,
-        prenom,
-        role: roleChoisi,
-        dossier_id: dossierId,
-        salarie_id: salarieId,
-        cabinet_id: cabinetId,
-      }),
+      body: JSON.stringify(
+        estClient
+          ? { email, password }
+          : {
+              email,
+              nom,
+              prenom,
+              role: roleChoisi,
+              dossier_id: dossierId,
+              salarie_id: salarieId,
+              cabinet_id: cabinetId,
+            }
+      ),
     });
     const json = await res.json();
     if (!res.ok) {
@@ -65,8 +80,11 @@ export function InviterUtilisateur({
       return;
     }
     setEtat("ok");
-    const ok =
-      json.mode === "reinvitation"
+    const ok = estClient
+      ? json.emailEnvoye === false
+        ? `Compte prêt pour ${email}. L'email n'est pas parti : communiquez le mot de passe vous-même.`
+        : `Compte prêt pour ${email}. Communiquez-lui le mot de passe (il n'est pas dans l'email).`
+      : json.mode === "reinvitation"
         ? `Nouveau lien d'activation envoyé à ${email}.`
         : `Invitation envoyée à ${email}.`;
     setMessage(ok);
@@ -112,6 +130,25 @@ export function InviterUtilisateur({
           onChange={(e) => setEmail(e.target.value)}
         />
       </div>
+      {estClient && (
+        <div>
+          <Label>Mot de passe provisoire</Label>
+          <Input
+            type="text"
+            required
+            minLength={8}
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Au moins 8 caractères"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Vous le communiquez au client (téléphone ou rendez-vous). Il devra le
+            changer à la première connexion. Il n&apos;est pas envoyé par email :
+            les liens d&apos;activation partent souvent en indésirables.
+          </p>
+        </div>
+      )}
       <Button type="submit" disabled={etat === "envoi"}>
         {etat === "envoi" ? "Envoi…" : libelleBouton}
       </Button>

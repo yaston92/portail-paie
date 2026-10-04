@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAccesClientDossier } from "@/lib/acces-client";
 import { estPresentSurMois, formatDate, moisCourant, moisLabel } from "@/lib/format";
 import { OuvrirCampagnes } from "@/components/campagne-cabinet-actions";
+import { DossierCreeToast } from "@/components/dossier-cree-toast";
 import { DossierEditForm } from "@/components/dossier-edit-form";
 import { InviterUtilisateur } from "@/components/inviter-utilisateur";
 import { RenvoyerAccesClient } from "@/components/renvoyer-acces-client";
@@ -23,11 +24,14 @@ import type { Campagne, Dossier, Profile, Salarie } from "@/lib/types";
 
 export default async function DossierDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ cree?: string }>;
 }) {
   const profile = await requireRole(["admin_cabinet", "collaborateur"]);
   const { id } = await params;
+  const { cree } = await searchParams;
   const supabase = await createClient();
   const mois = moisCourant();
 
@@ -73,6 +77,7 @@ export default async function DossierDetailPage({
 
   return (
     <div className="space-y-6">
+      <DossierCreeToast actif={cree === "1"} sigle={d.sigle} />
       <PageHeader
         titre={`${d.sigle} : ${d.raison_sociale}`}
         sousTitre={d.archive ? "Dossier archivé" : undefined}
@@ -147,6 +152,14 @@ export default async function DossierDetailPage({
                   <dt className="text-gray-500">Téléphone</dt>
                   <dd>{d.telephone ?? "-"}</dd>
                 </div>
+                <div>
+                  <dt className="text-gray-500">SIRET</dt>
+                  <dd>{d.siret ?? "-"}</dd>
+                </div>
+                <div>
+                  <dt className="text-gray-500">Convention collective</dt>
+                  <dd>{d.convention_collective ?? "-"}</dd>
+                </div>
               </dl>
             )}
           </CardBody>
@@ -163,7 +176,9 @@ export default async function DossierDetailPage({
                     <span className="font-medium">{accesClient.email ?? "-"}</span>
                   </div>
                   <p className="text-gray-600 mt-1 text-xs">
-                    Le client a créé son compte (dernière connexion enregistrée).
+                    {accesClient.doit_changer_mot_de_passe
+                      ? "Le client s'est connecté avec le mot de passe provisoire et doit encore le changer."
+                      : "Le client a un compte actif."}
                   </p>
                   {accesClient.email && (
                     <div className="mt-2">
@@ -179,7 +194,8 @@ export default async function DossierDetailPage({
                     <span className="font-medium">{accesClient.email ?? "-"}</span>
                   </div>
                   <p className="text-amber-900 mt-1 text-xs">
-                    Le client n&apos;a pas encore défini son mot de passe via l&apos;email.
+                    Mot de passe provisoire défini. Le client ne s&apos;est pas encore connecté.
+                    Communiquez-lui le mot de passe : il le changera à la première connexion.
                   </p>
                   {accesClient.email && (
                     <div className="mt-2">
@@ -209,7 +225,7 @@ export default async function DossierDetailPage({
                   dossierId={id}
                   emailInitial=""
                   nomInitial={d.raison_sociale}
-                  libelleBouton="Envoyer l'invitation"
+                  libelleBouton="Créer l'accès avec ce mot de passe"
                 />
               </div>
             </details>

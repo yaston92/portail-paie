@@ -13,7 +13,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const profile = await getApiProfile(["admin_cabinet", "collaborateur"]);
+  const profile = await getApiProfile(["directeur", "admin_cabinet", "collaborateur"]);
   if (!profile) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }

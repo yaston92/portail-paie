@@ -6,6 +6,20 @@ import { createClient } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/auth";
 import { getCabinetActif, peutAdminCabinet, requireCabinetContext } from "@/lib/cabinet";
 
+function lireSiret(formData: FormData): { siret: string | null } | { error: string } {
+  const brut = ((formData.get("siret") as string) || "").replace(/\s/g, "");
+  if (!brut) return { siret: null };
+  if (!/^\d{14}$/.test(brut)) {
+    return { error: "Le SIRET doit contenir 14 chiffres." };
+  }
+  return { siret: brut };
+}
+
+function lireConvention(formData: FormData): string | null {
+  const v = ((formData.get("convention_collective") as string) || "").trim();
+  return v || null;
+}
+
 /** Création d'un dossier client (admin du cabinet actif). */
 export async function creerDossier(formData: FormData) {
   const { profile, cabinet } = await requireCabinetContext();
@@ -13,6 +27,8 @@ export async function creerDossier(formData: FormData) {
     redirect("/cabinet/dossiers?erreur=Non%20autorisé");
   }
   const supabase = await createClient();
+  const siret = lireSiret(formData);
+  if ("error" in siret) return { error: siret.error };
 
   const { data, error } = await supabase
     .from("dossiers")
@@ -22,21 +38,23 @@ export async function creerDossier(formData: FormData) {
       raison_sociale: (formData.get("raison_sociale") as string).trim(),
       email: (formData.get("email") as string) || null,
       telephone: (formData.get("telephone") as string) || null,
+      siret: siret.siret,
+      convention_collective: lireConvention(formData),
       collaborateur_id: (formData.get("collaborateur_id") as string) || null,
     })
-    .select("id")
+    .select("id, sigle")
     .single();
 
   if (error || !data) {
-    redirect(
-      `/cabinet/dossiers/nouveau?erreur=${encodeURIComponent(
-        error?.message.includes("duplicate")
-          ? "Ce sigle existe déjà dans ce cabinet."
-          : "Échec de la création du dossier."
-      )}`
-    );
+    return {
+      error: error?.message.toLowerCase().includes("duplicate")
+        ? "Ce sigle existe déjà dans ce cabinet."
+        : "Échec de la création du dossier.",
+    };
   }
-  redirect(`/cabinet/dossiers/${data.id}`);
+
+  revalidatePath("/cabinet/dossiers");
+  return { ok: true as const, id: data.id, sigle: data.sigle };
 }
 
 /** Modification d'un dossier (admin du cabinet du dossier). */
@@ -50,6 +68,8 @@ export async function modifierDossier(
     return { error: "Non autorisé" };
   }
   const supabase = await createClient();
+  const siret = lireSiret(formData);
+  if ("error" in siret) return { error: siret.error };
 
   const { error } = await supabase
     .from("dossiers")
@@ -58,6 +78,8 @@ export async function modifierDossier(
       raison_sociale: (formData.get("raison_sociale") as string).trim(),
       email: (formData.get("email") as string) || null,
       telephone: (formData.get("telephone") as string) || null,
+      siret: siret.siret,
+      convention_collective: lireConvention(formData),
       collaborateur_id: (formData.get("collaborateur_id") as string) || null,
       archive: formData.get("archive") === "on",
     })

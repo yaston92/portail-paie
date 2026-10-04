@@ -82,7 +82,7 @@ export default async function ClientEmbauchesPage({
                 </Td>
                 <Td>{e.poste}</Td>
                 <Td>{formatDate(e.date_debut)}</Td>
-                <Td>{e.type_contrat.toUpperCase()}</Td>
+                <Td>{e.type_contrat ? e.type_contrat.toUpperCase() : "-"}</Td>
                 <Td>
                   <StatutBadge statut={e.statut} />
                 </Td>

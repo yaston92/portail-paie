@@ -1,4 +1,5 @@
 import { BRAND } from "@/lib/brand";
+import { LEGAL } from "@/lib/legal";
 
 /** Envoi d'emails transactionnels via l'API Brevo. */
 
@@ -6,18 +7,42 @@ interface EmailParams {
   to: { email: string; name?: string }[];
   subject: string;
   html: string;
+  /** Version texte : les filtres anti-spam pénalisent le HTML seul. */
+  text?: string;
   replyTo?: { email: string; name?: string };
+}
+
+function htmlVersTexte(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<a [^>]*href="([^"]+)"[^>]*>.*?<\/a>/gi, "$1")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 export async function envoyerEmail({
   to,
   subject,
   html,
+  text,
   replyTo,
 }: EmailParams): Promise<boolean> {
   const apiKey = process.env.BREVO_API_KEY;
   if (!apiKey) {
     console.warn("[email] BREVO_API_KEY absente : email non envoyé :", subject);
+    return false;
+  }
+  const from = process.env.EMAIL_FROM || "";
+  if (!from || from.endsWith("@example.com")) {
+    console.error(
+      "[email] EMAIL_FROM absent ou non vérifié : les messages partent en indésirables."
+    );
     return false;
   }
   const res = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -28,13 +53,17 @@ export async function envoyerEmail({
     },
     body: JSON.stringify({
       sender: {
-        email: process.env.EMAIL_FROM || "no-reply@example.com",
-        name: process.env.EMAIL_FROM_NAME || "Portail paie",
+        email: from,
+        name: process.env.EMAIL_FROM_NAME || "ETIK Paie",
       },
       to,
       subject,
       htmlContent: html,
-      ...(replyTo ? { replyTo } : {}),
+      textContent: text ?? htmlVersTexte(html),
+      replyTo: replyTo ?? {
+        email: LEGAL.emailContact,
+        name: "ETIK Paie",
+      },
     }),
   });
   if (!res.ok) {

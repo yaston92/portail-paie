@@ -10,6 +10,7 @@ export interface AccesClientInfo {
   profile_id: string | null;
   invited_at: string | null;
   last_sign_in_at: string | null;
+  doit_changer_mot_de_passe: boolean;
 }
 
 export async function getAccesClientDossier(dossierId: string): Promise<AccesClientInfo> {
@@ -22,7 +23,7 @@ export async function getAccesClientDossier(dossierId: string): Promise<AccesCli
 
   const { data: clients } = await admin
     .from("profiles")
-    .select("id, email, created_at")
+    .select("id, email, created_at, doit_changer_mot_de_passe")
     .eq("dossier_id", dossierId)
     .eq("role", "client")
     .order("created_at", { ascending: false });
@@ -34,6 +35,7 @@ export async function getAccesClientDossier(dossierId: string): Promise<AccesCli
       profile_id: null,
       invited_at: null,
       last_sign_in_at: null,
+      doit_changer_mot_de_passe: false,
     };
   }
 
@@ -56,6 +58,9 @@ export async function getAccesClientDossier(dossierId: string): Promise<AccesCli
         profile_id: c.id,
         invited_at: invited,
         last_sign_in_at: signIn,
+        doit_changer_mot_de_passe: Boolean(
+          (c as { doit_changer_mot_de_passe?: boolean }).doit_changer_mot_de_passe
+        ),
       };
     }
   }
@@ -72,16 +77,47 @@ export async function getAccesClientDossier(dossierId: string): Promise<AccesCli
     profile_id: premier.client.id,
     invited_at: invitedAt,
     last_sign_in_at: lastSignIn,
+    doit_changer_mot_de_passe: Boolean(
+      (premier.client as { doit_changer_mot_de_passe?: boolean }).doit_changer_mot_de_passe
+    ),
   };
 }
 
-/** Invite ou réinvite un client pour un dossier (email Brevo si compte déjà créé). */
+function messageBienvenueClient(nom: string, appUrl: string, renouvellement: boolean): string {
+  const intro = renouvellement
+    ? `Votre cabinet a défini un nouveau mot de passe provisoire pour le dossier <strong>${nom}</strong>.`
+    : `Votre cabinet a créé votre accès au dossier <strong>${nom}</strong>.`;
+  return (
+    `Bonjour,<br/><br/>${intro}` +
+    ` Connectez-vous avec votre adresse email et le mot de passe qu'il vous a communiqué (par téléphone ou de vive voix).` +
+    ` À la première connexion, l'application vous demandera d'en choisir un nouveau.` +
+    `<br/><br/>Le mot de passe n'est pas écrit dans cet email.` +
+    `<br/><br/><a href="${appUrl}/login" style="${styleBoutonEmail()}">Ouvrir ETIK Paie</a>`
+  );
+}
+
+/**
+ * Crée ou met à jour l'accès client avec un mot de passe provisoire
+ * choisi par le cabinet. Le client le change à la première connexion.
+ * L'email ne contient pas de lien secret (souvent classé en indésirables).
+ */
 export async function inviterOuReinviterClient(opts: {
   dossierId: string;
   email: string;
+  password: string;
   actorUserId: string;
-}): Promise<{ ok: true; mode: "invite" | "reinvitation"; userId?: string }> {
+}): Promise<{
+  ok: true;
+  mode: "invite" | "reinvitation";
+  userId?: string;
+  emailEnvoye: boolean;
+}> {
   const email = opts.email.trim().toLowerCase();
+  const password = opts.password;
+  if (password.length < 8) {
+    throw new Error("Le mot de passe provisoire doit contenir au moins 8 caractères.");
+  }
+
   const admin = createAdminClient();
   const { data: dossier } = await admin
     .from("dossiers")
@@ -96,8 +132,10 @@ export async function inviterOuReinviterClient(opts: {
   }
 
   const nom = dossier.raison_sociale || dossier.sigle || "Client";
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const redirectTo = `${appUrl}/auth/callback`;
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(
+    /\/$/,
+    ""
+  );
 
   const { data: existants } = await admin
     .from("profiles")
@@ -114,124 +152,64 @@ export async function inviterOuReinviterClient(opts: {
     throw new Error("Cet email correspond à un compte non-client.");
   }
 
+  let userId = deja?.id;
+  let mode: "invite" | "reinvitation" = deja ? "reinvitation" : "invite";
+
   if (!deja) {
-    const { data: linkData, error } = await admin.auth.admin.generateLink({
-      type: "invite",
+    const { data: created, error } = await admin.auth.admin.createUser({
       email,
-      options: {
-        data: {
-          role: "client",
-          nom,
-          prenom: "Client",
-          dossier_id: opts.dossierId,
-          salarie_id: "",
-        },
-        redirectTo,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        role: "client",
+        nom,
+        prenom: "Client",
+        dossier_id: opts.dossierId,
+        salarie_id: "",
       },
     });
-    if (error) throw new Error("Échec de l'invitation : " + error.message);
-
-    const hashed =
-      (linkData as { properties?: { hashed_token?: string }; hashed_token?: string })
-        .properties?.hashed_token ||
-      (linkData as { hashed_token?: string }).hashed_token;
-    const lien = hashed
-      ? `${appUrl}/definir-mot-de-passe?token_hash=${encodeURIComponent(hashed)}&type=invite`
-      : (linkData as { properties?: { action_link?: string } }).properties?.action_link ||
-        (linkData as { action_link?: string }).action_link;
-    if (!lien) throw new Error("Lien d'activation introuvable.");
-    if (lien.includes("localhost")) {
-      throw new Error(
-        `URL d'activation incorrecte (localhost). Vérifiez NEXT_PUBLIC_APP_URL (actuel: ${appUrl}).`
-      );
+    if (error || !created.user) {
+      throw new Error("Échec de la création du compte : " + (error?.message ?? ""));
     }
-
-    const envoye = await envoyerEmail({
-      to: [{ email, name: nom }],
-      subject: "Activez votre accès client : ETIK Paie",
-      html: gabaritEmail(
-        "Activez votre compte",
-        `Bonjour,<br/><br/>Voici un lien pour définir votre mot de passe et activer l'accès au dossier <strong>${nom}</strong>.` +
-          `<br/><br/><a href="${lien}" style="${styleBoutonEmail()}">Définir mon mot de passe</a>` +
-          `<p style="font-size:12px;color:#666;word-break:break-all;margin-top:16px">${lien}</p>`
-      ),
+    userId = created.user.id;
+    mode = "invite";
+  } else {
+    const { error } = await admin.auth.admin.updateUserById(deja.id, {
+      password,
+      email_confirm: true,
     });
-    if (!envoye) {
-      throw new Error(
-        "Lien généré mais email non envoyé (Brevo). Vérifiez BREVO_API_KEY / EMAIL_FROM."
-      );
+    if (error) throw new Error("Impossible de définir le mot de passe : " + error.message);
+    if (!deja.dossier_id) {
+      await admin.from("profiles").update({ dossier_id: opts.dossierId, nom }).eq("id", deja.id);
     }
-
-    const userId =
-      (linkData as { user?: { id?: string } }).user?.id ||
-      (linkData as { properties?: { user_id?: string } }).properties?.user_id;
-
-    await journaliser({
-      userId: opts.actorUserId,
-      action: "invitation_client",
-      cibleType: "user",
-      cibleId: userId,
-      dossierId: opts.dossierId,
-      details: { email, mode: "invite", via: "brevo" },
-    });
-    return { ok: true, mode: "invite", userId };
+    userId = deja.id;
+    mode = "reinvitation";
   }
 
-  if (!deja.dossier_id) {
+  if (userId) {
     await admin
       .from("profiles")
-      .update({ dossier_id: opts.dossierId, nom })
-      .eq("id", deja.id);
-  }
-
-  const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-    type: "magiclink",
-    email,
-    options: { redirectTo },
-  });
-  if (linkError) throw new Error("Impossible de régénérer le lien : " + linkError.message);
-
-  const hashed =
-    (linkData as { properties?: { hashed_token?: string }; hashed_token?: string })
-      .properties?.hashed_token ||
-    (linkData as { hashed_token?: string }).hashed_token;
-
-  const lien = hashed
-    ? `${appUrl}/definir-mot-de-passe?token_hash=${encodeURIComponent(hashed)}&type=magiclink`
-    : (linkData as { properties?: { action_link?: string } }).properties?.action_link ||
-      (linkData as { action_link?: string }).action_link;
-
-  if (!lien) throw new Error("Lien d'activation introuvable.");
-  if (lien.includes("localhost") || lien.includes("persons-tony-games-apr")) {
-    throw new Error(
-      `URL d'activation incorrecte. Vérifiez NEXT_PUBLIC_APP_URL (actuel: ${appUrl}).`
-    );
+      .update({ doit_changer_mot_de_passe: true, dossier_id: opts.dossierId })
+      .eq("id", userId);
   }
 
   const envoye = await envoyerEmail({
     to: [{ email, name: nom }],
-    subject: "Activez votre accès client : ETIK Paie",
+    subject: "Votre accès ETIK Paie",
     html: gabaritEmail(
-      "Activez votre compte",
-      `Bonjour,<br/><br/>Voici un nouveau lien pour définir votre mot de passe et activer l'accès au dossier <strong>${nom}</strong>.` +
-        `<br/><br/><a href="${lien}" style="${styleBoutonEmail()}">Définir mon mot de passe</a>` +
-        `<p style="font-size:12px;color:#666;word-break:break-all;margin-top:16px">${lien}</p>`
+      "Votre accès est prêt",
+      messageBienvenueClient(nom, appUrl, mode === "reinvitation")
     ),
   });
-  if (!envoye) {
-    throw new Error(
-      "Lien généré mais email non envoyé (Brevo). Vérifiez BREVO_API_KEY / EMAIL_FROM."
-    );
-  }
 
   await journaliser({
     userId: opts.actorUserId,
-    action: "reinvitation_client",
+    action: mode === "invite" ? "invitation_client" : "reinvitation_client",
     cibleType: "user",
-    cibleId: deja.id,
+    cibleId: userId,
     dossierId: opts.dossierId,
-    details: { email, mode: "magiclink" },
+    details: { email, mode, via: "mot_de_passe_provisoire", emailEnvoye: envoye },
   });
 
-  return { ok: true, mode: "reinvitation", userId: deja.id };
+  return { ok: true, mode, userId, emailEnvoye: envoye };
 }

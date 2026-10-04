@@ -38,18 +38,18 @@ export async function POST(
     );
   }
 
-  const salariesJoin = arret.salaries as
+  const salarieRaw = arret.salaries as
     | { nom: string; prenom: string; profile_id: string | null }
     | { nom: string; prenom: string; profile_id: string | null }[]
     | null
     | undefined;
-  const salarie = Array.isArray(salariesJoin) ? salariesJoin[0] : salariesJoin;
-  const dossiersJoin = arret.dossiers as
+  const salarie = Array.isArray(salarieRaw) ? salarieRaw[0] : salarieRaw;
+  const dossierRaw = arret.dossiers as
     | { sigle: string }
     | { sigle: string }[]
     | null
     | undefined;
-  const dossier = Array.isArray(dossiersJoin) ? dossiersJoin[0] : dossiersJoin;
+  const dossier = Array.isArray(dossierRaw) ? dossierRaw[0] : dossierRaw;
   const nomSalarie = salarie
     ? `${salarie.prenom} ${salarie.nom}`
     : "le salarié";

@@ -115,7 +115,7 @@ export async function extraireTextesPages(pdf: Buffer): Promise<string[]> {
     standardFontDataUrl: standardFontsUrl(),
     useWorkerFetch: false,
     verbosity: 0,
-  });
+  } as Parameters<typeof pdfjs.getDocument>[0]);
 
   try {
     const doc = await loadingTask.promise;

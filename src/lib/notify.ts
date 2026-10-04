@@ -10,22 +10,44 @@ interface NotifyParams {
 }
 
 /**
- * Destinataires côté cabinet pour un dossier : le collaborateur en charge,
- * ou à défaut tous les administrateurs.
+ * Destinataires cabinet d'un dossier :
+ * collaborateur en charge, administrateurs et directeur du cabinet.
+ * Sans collaborateur affecté, tous les collaborateurs du cabinet sont prévenus.
  */
 export async function destinatairesCabinet(dossierId: string): Promise<string[]> {
   const admin = createAdminClient();
   const { data: dossier } = await admin
     .from("dossiers")
-    .select("collaborateur_id")
+    .select("collaborateur_id, cabinet_id")
     .eq("id", dossierId)
     .single();
-  if (dossier?.collaborateur_id) return [dossier.collaborateur_id];
-  const { data: admins } = await admin
-    .from("profiles")
-    .select("id")
-    .eq("role", "admin_cabinet");
-  return (admins ?? []).map((a) => a.id);
+  if (!dossier?.cabinet_id) return [];
+
+  const ids = new Set<string>();
+  if (dossier.collaborateur_id) ids.add(dossier.collaborateur_id);
+
+  const { data: membres } = await admin
+    .from("cabinet_membres")
+    .select("profile_id, role_membre")
+    .eq("cabinet_id", dossier.cabinet_id);
+
+  const profileIds = (membres ?? []).map((m) => m.profile_id);
+  const { data: profiles } = profileIds.length
+    ? await admin.from("profiles").select("id, role").in("id", profileIds)
+    : { data: [] as { id: string; role: string }[] };
+  const roleParId = new Map((profiles ?? []).map((p) => [p.id, p.role]));
+
+  for (const m of membres ?? []) {
+    const role = roleParId.get(m.profile_id);
+    const estDirection =
+      role === "directeur" || role === "admin_cabinet" || m.role_membre === "admin";
+    const estCollaborateur =
+      !dossier.collaborateur_id &&
+      (role === "collaborateur" || m.role_membre === "collaborateur");
+    if (estDirection || estCollaborateur) ids.add(m.profile_id);
+  }
+
+  return [...ids];
 }
 
 /** Comptes client d'un dossier. */

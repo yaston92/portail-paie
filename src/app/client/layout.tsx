@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell, type NavItem } from "@/components/app-shell";
@@ -8,6 +9,7 @@ export default async function ClientLayout({
   children: React.ReactNode;
 }) {
   const profile = await requireRole(["client"]);
+  if (profile.doit_changer_mot_de_passe) redirect("/changer-mot-de-passe");
 
   const supabase = await createClient();
   const { count } = await supabase

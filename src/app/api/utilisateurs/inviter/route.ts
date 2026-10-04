@@ -23,6 +23,7 @@ const schema = z.object({
   dossier_id: z.string().uuid().optional(),
   salarie_id: z.string().uuid().optional(),
   cabinet_id: z.string().uuid().optional(),
+  password: z.string().min(8).optional(),
 });
 
 function appUrlBase(): string {
@@ -122,7 +123,7 @@ export async function POST(request: Request) {
   if (!body.success) {
     return NextResponse.json({ error: "Données invalides" }, { status: 400 });
   }
-  const { email: emailRaw, role, nom, prenom, telephone, dossier_id, salarie_id } =
+  const { email: emailRaw, role, nom, prenom, telephone, dossier_id, salarie_id, password } =
     body.data;
   const email = emailRaw.trim().toLowerCase();
 
@@ -177,10 +178,17 @@ export async function POST(request: Request) {
   }
 
   if (role === "client" && dossier_id) {
+    if (!password || password.length < 8) {
+      return NextResponse.json(
+        { error: "Choisissez un mot de passe provisoire d'au moins 8 caractères." },
+        { status: 400 }
+      );
+    }
     try {
       const result = await inviterOuReinviterClient({
         dossierId: dossier_id,
         email,
+        password,
         actorUserId: profile.id,
       });
       return NextResponse.json({ ...result, ok: true });

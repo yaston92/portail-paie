@@ -37,17 +37,24 @@ export async function POST(
     return NextResponse.json({ error: "Dossier inaccessible" }, { status: 403 });
   }
 
-  let body: { email?: string } = {};
+  let body: { email?: string; password?: string } = {};
   try {
     body = await request.json();
   } catch {
-    /* email optionnel */
+    body = {};
   }
 
   const email = (body.email || "").trim().toLowerCase();
+  const password = body.password ?? "";
   if (!email || !email.includes("@")) {
     return NextResponse.json(
-      { error: "Indiquez l'email du client à (ré)inviter." },
+      { error: "Indiquez l'email du client." },
+      { status: 400 }
+    );
+  }
+  if (password.length < 8) {
+    return NextResponse.json(
+      { error: "Choisissez un mot de passe provisoire d'au moins 8 caractères." },
       { status: 400 }
     );
   }
@@ -56,6 +63,7 @@ export async function POST(
     const result = await inviterOuReinviterClient({
       dossierId: id,
       email,
+      password,
       actorUserId: profile.id,
     });
     return NextResponse.json(result);

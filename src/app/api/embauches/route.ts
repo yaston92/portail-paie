@@ -15,9 +15,9 @@ export const runtime = "nodejs";
 
 /**
  * Déclaration d'embauche par le client (multipart).
- * Envoi impossible si un champ ou une pièce obligatoire manque :
- * pièce d'identité recto ET verso, et tous les champs du contrat.
- * Carte vitale et n° de sécurité sociale sont optionnels.
+ * Sans la case accompagnement : pièce d'identité recto ET verso, et tous les champs du contrat.
+ * Avec la case : nom et prénom suffisent ; le reste et les pièces restent possibles.
+ * Carte vitale et n° de sécurité sociale sont toujours optionnels.
  */
 export async function POST(request: Request) {
   const profile = await getApiProfile(["client"]);
@@ -59,8 +59,8 @@ export async function POST(request: Request) {
 
   // Re-soumission : l'embauche doit appartenir au dossier et être "retournée"
   let existante: {
-    piece_identite_recto_chemin: string;
-    piece_identite_verso_chemin: string;
+    piece_identite_recto_chemin: string | null;
+    piece_identite_verso_chemin: string | null;
     carte_vitale_chemin: string | null;
     nir: string | null;
   } | null = null;
@@ -87,18 +87,37 @@ export async function POST(request: Request) {
   const cddDuree = champ("cdd_duree");
   const dureeHebdo = parseFloat(champ("duree_hebdo").replace(",", "."));
   const salaireMinimum = champ("salaire_minimum") === "true";
-  const salaire = parseFloat(champ("salaire").replace(",", "."));
+  const salaireBrut = champ("salaire").replace(",", ".");
+  const salaire = salaireBrut === "" ? NaN : parseFloat(salaireBrut);
+  const salaireTypeChamp = champ("salaire_type");
+  const salaireType =
+    salaireTypeChamp === "net" || salaireTypeChamp === "brut" ? salaireTypeChamp : null;
   const poste = champ("poste");
+  const accompagnement = champ("accompagnement") === "true";
   const nir = champ("nir").replace(/[\s.]/g, "");
   const recto = fichier("piece_identite_recto");
   const verso = fichier("piece_identite_verso");
   const carteVitale = fichier("carte_vitale");
+  const contratConnu = typeContrat === "cdi" || typeContrat === "cdd";
 
   if (!nom) manquants.push("Nom");
   if (!prenom) manquants.push("Prénom");
-  if (!dateDebut) manquants.push("Date de début de contrat");
-  if (typeContrat !== "cdi" && typeContrat !== "cdd") manquants.push("Type de contrat");
-  if (typeContrat === "cdd" && !cddDuree) manquants.push("Date de fin du CDD");
+  if (!accompagnement) {
+    if (!dateDebut) manquants.push("Date de début de contrat");
+    if (!contratConnu) manquants.push("Type de contrat");
+    if (typeContrat === "cdd" && !cddDuree) manquants.push("Date de fin du CDD");
+    if (!Number.isFinite(dureeHebdo) || dureeHebdo <= 0)
+      manquants.push("Durée hebdomadaire de travail");
+    if (!salaireMinimum && (!Number.isFinite(salaire) || salaire <= 0))
+      manquants.push("Salaire (ou cochez « salaire minimum »)");
+    if (!salaireMinimum && Number.isFinite(salaire) && salaire > 0 && !salaireType)
+      manquants.push("Précisez si le salaire est en brut ou en net");
+    if (!poste) manquants.push("Poste occupé");
+    if (!recto && !existante?.piece_identite_recto_chemin)
+      manquants.push("Pièce d'identité : recto");
+    if (!verso && !existante?.piece_identite_verso_chemin)
+      manquants.push("Pièce d'identité : verso");
+  }
   if (
     typeContrat === "cdd" &&
     cddDuree &&
@@ -108,15 +127,8 @@ export async function POST(request: Request) {
   ) {
     manquants.push("Date de fin du CDD (doit être ≥ date de début)");
   }
-  if (!Number.isFinite(dureeHebdo) || dureeHebdo <= 0)
-    manquants.push("Durée hebdomadaire de travail");
-  if (!salaireMinimum && (!Number.isFinite(salaire) || salaire <= 0))
-    manquants.push("Salaire (ou cochez « salaire minimum »)");
-  if (!poste) manquants.push("Poste occupé");
-  if (!recto && !existante?.piece_identite_recto_chemin)
-    manquants.push("Pièce d'identité : recto");
-  if (!verso && !existante?.piece_identite_verso_chemin)
-    manquants.push("Pièce d'identité : verso");
+  if (salaireBrut && (!Number.isFinite(salaire) || salaire < 0))
+    manquants.push("Salaire invalide");
   if (nir && !nirValide(nir))
     manquants.push("N° de sécurité sociale invalide (13 ou 15 chiffres)");
 
@@ -141,16 +153,16 @@ export async function POST(request: Request) {
     return chemin;
   }
 
-  let rectoChemin: string;
-  let versoChemin: string;
+  let rectoChemin: string | null;
+  let versoChemin: string | null;
   let carteVitaleChemin: string | null;
   try {
     rectoChemin = recto
       ? await deposer(recto, "recto")
-      : existante!.piece_identite_recto_chemin;
+      : (existante?.piece_identite_recto_chemin ?? null);
     versoChemin = verso
       ? await deposer(verso, "verso")
-      : existante!.piece_identite_verso_chemin;
+      : (existante?.piece_identite_verso_chemin ?? null);
     carteVitaleChemin = carteVitale
       ? await deposer(carteVitale, "carte-vitale")
       : (existante?.carte_vitale_chemin ?? null);
@@ -176,13 +188,15 @@ export async function POST(request: Request) {
     carte_vitale_chemin: carteVitaleChemin,
     piece_identite_recto_chemin: rectoChemin,
     piece_identite_verso_chemin: versoChemin,
-    date_debut: dateDebut,
-    type_contrat: typeContrat,
-    cdd_duree: typeContrat === "cdd" ? cddDuree : null,
-    duree_hebdo: dureeHebdo,
-    salaire: salaireMinimum ? null : salaire,
+    date_debut: dateDebut || null,
+    type_contrat: contratConnu ? typeContrat : null,
+    cdd_duree: typeContrat === "cdd" ? cddDuree || null : null,
+    duree_hebdo: Number.isFinite(dureeHebdo) && dureeHebdo > 0 ? dureeHebdo : null,
+    salaire: salaireMinimum || !Number.isFinite(salaire) ? null : salaire,
+    salaire_type: salaireMinimum ? null : salaireType,
     salaire_minimum: salaireMinimum,
-    poste,
+    accompagnement,
+    poste: poste || null,
     note: champ("note") || null,
     commentaire_retour: null,
     created_by: profile.id,
@@ -220,10 +234,15 @@ export async function POST(request: Request) {
     .select("sigle")
     .eq("id", dossierId)
     .single();
+  const detailPoste = poste || "poste non précisé";
+  const detailDate = dateDebut ? `, à compter du ${dateDebut}` : "";
+  const detailRappel = accompagnement
+    ? " Le client souhaite être rappelé pour un accompagnement."
+    : "";
   await notifier({
     userIds: await destinatairesCabinet(dossierId),
     titre: `Nouvelle embauche à valider : ${dossier?.sigle ?? ""}`,
-    corps: `${nom.toUpperCase()} ${prenom}, ${poste}, à compter du ${dateDebut}.`,
+    corps: `${nom.toUpperCase()} ${prenom}, ${detailPoste}${detailDate}.${detailRappel}`,
     lien: `/cabinet/embauches/${idFinal}`,
   });
 

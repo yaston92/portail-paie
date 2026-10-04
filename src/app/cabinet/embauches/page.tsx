@@ -45,7 +45,12 @@ function Tableau({
                 {e.nom} {e.prenom}
               </Link>
             </Td>
-            <Td>{e.poste}</Td>
+            <Td>
+              {e.poste || "-"}
+              {e.accompagnement && (
+                <Badge variant="amber">Rappel souhaité</Badge>
+              )}
+            </Td>
             <Td>{formatDate(e.date_debut)}</Td>
             <Td>{formatDate(e.created_at.slice(0, 10))}</Td>
             <Td>
@@ -63,7 +68,7 @@ function Tableau({
 }
 
 export default async function CabinetEmbauchesPage() {
-  await requireRole(["admin_cabinet", "collaborateur"]);
+  const profile = await requireRole(["directeur", "admin_cabinet", "collaborateur"]);
   const { getCabinetActif } = await import("@/lib/cabinet");
   const cabinet = await getCabinetActif();
   if (!cabinet) {
@@ -95,7 +100,11 @@ export default async function CabinetEmbauchesPage() {
     <div className="space-y-6">
       <PageHeader
         titre="Embauches"
-        sousTitre={`${enAttente.length} déclaration(s) en attente de validation`}
+        sousTitre={
+          profile.role === "directeur"
+            ? `${enAttente.length} à traiter pour tout le cabinet`
+            : `${enAttente.length} déclaration(s) en attente de validation`
+        }
       />
       {enAttente.length === 0 && autres.length === 0 ? (
         <EmptyState message="Aucune déclaration d'embauche." />
