@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Input, Label, Select } from "@/components/ui";
+import { Button, Input, Label } from "@/components/ui";
+import { ChoixCollaborateurs } from "@/components/choix-collaborateurs";
 import { toastError, toastSuccess } from "@/lib/toast";
 import { modifierDossier } from "@/app/cabinet/dossiers/actions";
 import type { Dossier, Profile } from "@/lib/types";
@@ -11,9 +12,11 @@ import type { Dossier, Profile } from "@/lib/types";
 export function DossierEditForm({
   dossier,
   collaborateurs,
+  selection,
 }: {
   dossier: Dossier;
   collaborateurs: Profile[];
+  selection: string[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -83,20 +86,7 @@ export function DossierEditForm({
           />
         </div>
       </div>
-      <div>
-        <Label>Collaborateur en charge</Label>
-        <Select
-          name="collaborateur_id"
-          defaultValue={dossier.collaborateur_id ?? ""}
-        >
-          <option value="">- Non affecté -</option>
-          {collaborateurs.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.prenom} {c.nom}
-            </option>
-          ))}
-        </Select>
-      </div>
+      <ChoixCollaborateurs collaborateurs={collaborateurs} selection={selection} />
       <label className="flex items-center gap-2 text-sm">
         <input
           type="checkbox"

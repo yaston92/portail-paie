@@ -168,7 +168,10 @@ export async function POST(
   // Campagne du même mois → statut « publié »
   await admin
     .from("campagnes")
-    .update({ statut: "bulletins_envoyes" })
+    .update({
+      statut: "bulletins_envoyes",
+      traitee_at: new Date().toISOString(),
+    })
     .eq("dossier_id", upload.dossier_id)
     .eq("mois", upload.mois)
     .in("statut", ["ouverte", "envoyee", "cloturee_identique", "bulletins_envoyes"]);

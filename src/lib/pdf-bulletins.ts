@@ -108,28 +108,58 @@ export async function extraireTextesPages(pdf: Buffer): Promise<string[]> {
     throw new Error("NOT_A_PDF");
   }
 
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const loadingTask = pdfjs.getDocument({
-    data: octetsPdf(pdf),
-    useSystemFonts: true,
-    standardFontDataUrl: standardFontsUrl(),
-    useWorkerFetch: false,
-    verbosity: 0,
-  } as Parameters<typeof pdfjs.getDocument>[0]);
+  const essais: Record<string, unknown>[] = [
+    {
+      useSystemFonts: true,
+      standardFontDataUrl: standardFontsUrl(),
+      useWorkerFetch: false,
+      isEvalSupported: false,
+      verbosity: 0,
+    },
+    {
+      useSystemFonts: false,
+      disableFontFace: true,
+      useWorkerFetch: false,
+      isEvalSupported: false,
+      verbosity: 0,
+    },
+  ];
 
-  try {
-    const doc = await loadingTask.promise;
-    const textes: string[] = [];
-    for (let i = 1; i <= doc.numPages; i++) {
-      const page = await doc.getPage(i);
-      const contenu = await page.getTextContent({
-        includeMarkedContent: false,
-      });
-      textes.push(textePageDepuisItems(contenu.items));
+  let derniereErreur: unknown;
+  for (const options of essais) {
+    const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+    const loadingTask = pdfjs.getDocument({
+      data: octetsPdf(pdf),
+      ...options,
+    } as Parameters<typeof pdfjs.getDocument>[0]);
+    try {
+      const doc = await loadingTask.promise;
+      const textes: string[] = [];
+      for (let i = 1; i <= doc.numPages; i++) {
+        try {
+          const page = await doc.getPage(i);
+          const contenu = await page.getTextContent({
+            includeMarkedContent: false,
+          });
+          textes.push(textePageDepuisItems(contenu.items));
+        } catch {
+          textes.push("");
+        }
+      }
+      return textes;
+    } catch (e) {
+      derniereErreur = e;
+    } finally {
+      await loadingTask.destroy().catch(() => undefined);
     }
-    return textes;
-  } finally {
-    await loadingTask.destroy().catch(() => undefined);
+  }
+
+  // Dernier recours : le PDF s'ouvre, le texte sera complété à la main.
+  try {
+    const doc = await PDFDocument.load(pdf, { ignoreEncryption: true });
+    return Array.from({ length: Math.max(doc.getPageCount(), 1) }, () => "");
+  } catch {
+    throw derniereErreur instanceof Error ? derniereErreur : new Error("PDF_ILLISIBLE");
   }
 }
 

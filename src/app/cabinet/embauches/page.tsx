@@ -47,7 +47,7 @@ function Tableau({
             </Td>
             <Td>
               {e.poste || "-"}
-              {e.accompagnement && (
+              {e.accompagnement && !e.rappel_traite_at && (
                 <Badge variant="amber">Rappel souhaité</Badge>
               )}
             </Td>

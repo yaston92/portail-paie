@@ -176,10 +176,14 @@ export function SaisieSalarie({
       </div>
 
       {!disabled && (
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <Button onClick={enregistrer} disabled={etat === "envoi"}>
             {etat === "envoi" ? "Enregistrement…" : "Enregistrer ce salarié"}
           </Button>
+          <p className="text-xs text-gray-500 max-w-sm">
+            Ceci enregistre le salarié. La validation de l&apos;ensemble, notes
+            comprises, se fait en bas de la page du mois.
+          </p>
           <a
             href={`/client/variables/${campagneId}`}
             className="text-sm text-blue-700 hover:underline"

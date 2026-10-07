@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import { texteDureeHebdo, texteSalaire } from "@/lib/embauche-affichage";
 import { EmbaucheActions } from "@/components/embauche-actions";
-import { PieceEmbauche } from "@/components/piece-embauche";
+import { LeverRappelEmbauche } from "@/components/lever-rappel-embauche";
+import { PiecesEmbauche } from "@/components/pieces-embauche";
 import { Alert, Badge, Card, CardBody, PageHeader } from "@/components/ui";
 import type { Dossier, Embauche } from "@/lib/types";
 
@@ -32,7 +33,7 @@ export default async function CabinetEmbaucheDetailPage({
   const d = dossierJoint;
 
   return (
-    <div className="max-w-2xl space-y-4">
+    <div className="max-w-5xl space-y-4">
       <PageHeader
         titre={`Embauche : ${e.nom} ${e.prenom}`}
         sousTitre={`Dossier ${d.sigle} : ${d.raison_sociale}`}
@@ -46,11 +47,16 @@ export default async function CabinetEmbaucheDetailPage({
         }
       />
 
-      {e.accompagnement && (
+      {e.accompagnement && !e.rappel_traite_at && (
         <Alert variant="warning">
-          Le client ne connaissait pas toutes les informations et souhaite être
-          rappelé pour un accompagnement. Les champs vides sont ceux qu&apos;il n&apos;a
-          pas pu remplir.
+          <p>
+            Le client ne connaissait pas toutes les informations et souhaite être
+            rappelé pour un accompagnement. Les champs vides sont ceux qu&apos;il n&apos;a
+            pas pu remplir.
+          </p>
+          <div className="mt-3">
+            <LeverRappelEmbauche embaucheId={id} />
+          </div>
         </Alert>
       )}
       {e.statut === "retourne" && (
@@ -112,26 +118,26 @@ export default async function CabinetEmbaucheDetailPage({
           </dl>
 
           <h3 className="font-semibold mt-5 mb-3 text-sm">Pièces</h3>
-          <div className="space-y-4">
-            <PieceEmbauche
-              id={id}
-              type="recto"
-              chemin={e.piece_identite_recto_chemin}
-              label="Pièce d'identité : recto"
-            />
-            <PieceEmbauche
-              id={id}
-              type="verso"
-              chemin={e.piece_identite_verso_chemin}
-              label="Pièce d'identité : verso"
-            />
-            <PieceEmbauche
-              id={id}
-              type="carte_vitale"
-              chemin={e.carte_vitale_chemin}
-              label="Carte vitale"
-            />
-          </div>
+          <PiecesEmbauche
+            id={id}
+            pieces={[
+              {
+                type: "recto",
+                chemin: e.piece_identite_recto_chemin,
+                label: "Pièce d'identité : recto",
+              },
+              {
+                type: "verso",
+                chemin: e.piece_identite_verso_chemin,
+                label: "Pièce d'identité : verso",
+              },
+              {
+                type: "carte_vitale",
+                chemin: e.carte_vitale_chemin,
+                label: "Carte vitale",
+              },
+            ]}
+          />
         </CardBody>
       </Card>
 

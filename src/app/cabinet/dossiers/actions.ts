@@ -20,6 +20,23 @@ function lireConvention(formData: FormData): string | null {
   return v || null;
 }
 
+function lireCollaborateurIds(formData: FormData): string[] {
+  const bruts = formData.getAll("collaborateur_ids").map((v) => String(v).trim());
+  return [...new Set(bruts.filter((id) => id.length > 0))];
+}
+
+async function enregistrerCollaborateurs(
+  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
+  dossierId: string,
+  ids: string[]
+) {
+  await supabase.from("dossier_collaborateurs").delete().eq("dossier_id", dossierId);
+  if (ids.length === 0) return;
+  await supabase.from("dossier_collaborateurs").insert(
+    ids.map((profile_id) => ({ dossier_id: dossierId, profile_id }))
+  );
+}
+
 /** Création d'un dossier client (admin du cabinet actif). */
 export async function creerDossier(formData: FormData) {
   const { profile, cabinet } = await requireCabinetContext();
@@ -29,6 +46,7 @@ export async function creerDossier(formData: FormData) {
   const supabase = await createClient();
   const siret = lireSiret(formData);
   if ("error" in siret) return { error: siret.error };
+  const collaborateurs = lireCollaborateurIds(formData);
 
   const { data, error } = await supabase
     .from("dossiers")
@@ -40,7 +58,7 @@ export async function creerDossier(formData: FormData) {
       telephone: (formData.get("telephone") as string) || null,
       siret: siret.siret,
       convention_collective: lireConvention(formData),
-      collaborateur_id: (formData.get("collaborateur_id") as string) || null,
+      collaborateur_id: collaborateurs[0] ?? null,
     })
     .select("id, sigle")
     .single();
@@ -52,6 +70,8 @@ export async function creerDossier(formData: FormData) {
         : "Échec de la création du dossier.",
     };
   }
+
+  await enregistrerCollaborateurs(supabase, data.id, collaborateurs);
 
   revalidatePath("/cabinet/dossiers");
   return { ok: true as const, id: data.id, sigle: data.sigle };
@@ -70,6 +90,7 @@ export async function modifierDossier(
   const supabase = await createClient();
   const siret = lireSiret(formData);
   if ("error" in siret) return { error: siret.error };
+  const collaborateurs = lireCollaborateurIds(formData);
 
   const { error } = await supabase
     .from("dossiers")
@@ -80,7 +101,7 @@ export async function modifierDossier(
       telephone: (formData.get("telephone") as string) || null,
       siret: siret.siret,
       convention_collective: lireConvention(formData),
-      collaborateur_id: (formData.get("collaborateur_id") as string) || null,
+      collaborateur_id: collaborateurs[0] ?? null,
       archive: formData.get("archive") === "on",
     })
     .eq("id", id)
@@ -93,6 +114,8 @@ export async function modifierDossier(
         : "Échec de l'enregistrement.",
     };
   }
+
+  await enregistrerCollaborateurs(supabase, id, collaborateurs);
 
   revalidatePath(`/cabinet/dossiers/${id}`);
   return { ok: true };

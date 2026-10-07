@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getApiProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { journaliser } from "@/lib/audit";
-import { etatCampagne } from "@/lib/campagne";
+import { etatCampagne, motifPaiesNonIdentiques } from "@/lib/campagne";
 import { rejouerPendingSyncCampagne } from "@/lib/demandes-conge";
 import { rejouerPendingSyncArretsMaladie } from "@/lib/arrets-maladie";
 import { destinatairesCabinet, notifier } from "@/lib/notify";
@@ -52,6 +52,15 @@ export async function POST(
   }
 
   if (body.data.identiques) {
+    const motif = await motifPaiesNonIdentiques(
+      admin,
+      campagne.dossier_id,
+      campagne.mois
+    );
+    if (motif) {
+      return NextResponse.json({ error: motif }, { status: 400 });
+    }
+
     // Injecte les CP validés (pending ou déjà liés au mois) avant clôture
     await rejouerPendingSyncCampagne({
       dossierId: campagne.dossier_id,

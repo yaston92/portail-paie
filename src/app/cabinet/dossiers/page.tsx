@@ -42,6 +42,23 @@ export default async function DossiersPage() {
   }
 
   const liste = (dossiers ?? []) as Dossier[];
+  const { data: liens } = liste.length
+    ? await supabase
+        .from("dossier_collaborateurs")
+        .select("dossier_id, profile_id")
+        .in(
+          "dossier_id",
+          liste.map((d) => d.id)
+        )
+    : { data: [] as { dossier_id: string; profile_id: string }[] };
+  const nomsParDossier = new Map<string, string[]>();
+  for (const lien of (liens ?? []) as { dossier_id: string; profile_id: string }[]) {
+    const nom = collabParId.get(lien.profile_id);
+    if (!nom) continue;
+    const deja = nomsParDossier.get(lien.dossier_id) ?? [];
+    if (!deja.includes(nom)) deja.push(nom);
+    nomsParDossier.set(lien.dossier_id, deja);
+  }
 
   return (
     <div>
@@ -72,11 +89,16 @@ export default async function DossiersPage() {
                       <p className="text-sm text-gray-500 mt-0.5 truncate">
                         {d.raison_sociale}
                       </p>
-                      {d.collaborateur_id && (
-                        <p className="text-xs text-gray-400 mt-2">
-                          {collabParId.get(d.collaborateur_id) ?? "Collaborateur"}
-                        </p>
-                      )}
+                      {(() => {
+                        const noms = nomsParDossier.get(d.id) ?? [];
+                        if (noms.length === 0 && d.collaborateur_id) {
+                          const seul = collabParId.get(d.collaborateur_id);
+                          if (seul) noms.push(seul);
+                        }
+                        return noms.length > 0 ? (
+                          <p className="text-xs text-gray-400 mt-2">{noms.join(", ")}</p>
+                        ) : null;
+                      })()}
                     </div>
                     {d.archive ? (
                       <Badge variant="gray">Archivé</Badge>

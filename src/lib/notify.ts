@@ -16,15 +16,24 @@ interface NotifyParams {
  */
 export async function destinatairesCabinet(dossierId: string): Promise<string[]> {
   const admin = createAdminClient();
-  const { data: dossier } = await admin
-    .from("dossiers")
-    .select("collaborateur_id, cabinet_id")
-    .eq("id", dossierId)
-    .single();
+  const [{ data: dossier }, { data: affects }] = await Promise.all([
+    admin
+      .from("dossiers")
+      .select("collaborateur_id, cabinet_id")
+      .eq("id", dossierId)
+      .single(),
+    admin
+      .from("dossier_collaborateurs")
+      .select("profile_id")
+      .eq("dossier_id", dossierId),
+  ]);
   if (!dossier?.cabinet_id) return [];
 
-  const ids = new Set<string>();
-  if (dossier.collaborateur_id) ids.add(dossier.collaborateur_id);
+  const assignes = new Set<string>();
+  if (dossier.collaborateur_id) assignes.add(dossier.collaborateur_id);
+  for (const a of affects ?? []) assignes.add(a.profile_id as string);
+
+  const ids = new Set<string>(assignes);
 
   const { data: membres } = await admin
     .from("cabinet_membres")
@@ -42,7 +51,7 @@ export async function destinatairesCabinet(dossierId: string): Promise<string[]>
     const estDirection =
       role === "directeur" || role === "admin_cabinet" || m.role_membre === "admin";
     const estCollaborateur =
-      !dossier.collaborateur_id &&
+      assignes.size === 0 &&
       (role === "collaborateur" || m.role_membre === "collaborateur");
     if (estDirection || estCollaborateur) ids.add(m.profile_id);
   }

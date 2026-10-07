@@ -137,6 +137,7 @@ function DefinirMotDePasseForm() {
       setChargement(false);
       return;
     }
+    await fetch("/api/auth/acces-active", { method: "POST" }).catch(() => undefined);
     const { toastSuccess } = await import("@/lib/toast");
     toastSuccess("Mot de passe enregistré");
     router.push("/");

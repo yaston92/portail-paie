@@ -7,7 +7,13 @@ import { Alert, Button, Card, CardBody } from "@/components/ui";
 import { toastError, toastSuccess } from "@/lib/toast";
 
 /** Question d'entrée de la campagne : « vos paies sont-elles les mêmes que d'habitude ? » */
-export function QuestionIdentiques({ campagneId }: { campagneId: string }) {
+export function QuestionIdentiques({
+  campagneId,
+  motifBlocage,
+}: {
+  campagneId: string;
+  motifBlocage?: string | null;
+}) {
   const router = useRouter();
   const [erreur, setErreur] = useState<string | null>(null);
   const [envoi, setEnvoi] = useState<"oui" | "non" | null>(null);
@@ -40,10 +46,9 @@ export function QuestionIdentiques({ campagneId }: { campagneId: string }) {
           Vos paies sont-elles les mêmes que d&apos;habitude ?
         </h2>
         <p className="text-sm text-gray-500 mb-6 max-w-md mx-auto">
-          Si oui, la campagne du mois est terminée : vous n&apos;avez rien
-          d&apos;autre à saisir. Les congés payés déjà validés pour le mois
-          restent transmis au cabinet. Sinon, vous saisirez les variables
-          salarié par salarié.
+          {motifBlocage
+            ? motifBlocage
+            : "Si oui, la campagne du mois est transmise au cabinet et reste en cours jusqu'à son traitement. Les congés payés déjà validés pour le mois restent transmis. Sinon, vous saisirez les variables salarié par salarié."}
         </p>
         {erreur && (
           <div className="mb-4 max-w-md mx-auto">
@@ -51,13 +56,15 @@ export function QuestionIdentiques({ campagneId }: { campagneId: string }) {
           </div>
         )}
         <div className="flex justify-center gap-4">
-          <Button
-            onClick={() => repondre(true)}
-            disabled={envoi !== null}
-            className="px-8 py-3 text-base"
-          >
-            {envoi === "oui" ? "Envoi…" : "Oui, tout est identique"}
-          </Button>
+          {!motifBlocage && (
+            <Button
+              onClick={() => repondre(true)}
+              disabled={envoi !== null}
+              className="px-8 py-3 text-base"
+            >
+              {envoi === "oui" ? "Envoi…" : "Oui, tout est identique"}
+            </Button>
+          )}
           <Button
             variant="secondary"
             onClick={() => repondre(false)}
@@ -143,7 +150,7 @@ export function EnvoyerCampagne({
       )}
       <div className="flex items-center gap-4">
         <Button onClick={envoyer} disabled={envoi}>
-          {envoi ? "Envoi…" : "Envoyer définitivement au cabinet"}
+          {envoi ? "Envoi…" : "Valider et envoyer au cabinet"}
         </Button>
         <span className="text-sm text-gray-600">
           {completes} salarié{completes > 1 ? "s" : ""} sur {total} complété

@@ -34,11 +34,17 @@ export async function POST(request: Request) {
 
   let cibles = campagnes ?? [];
   if (collaborateur_id && cibles.length > 0) {
-    const { data: dossiers } = await supabase
-      .from("dossiers")
-      .select("id")
-      .eq("collaborateur_id", collaborateur_id);
-    const ids = new Set((dossiers ?? []).map((d) => d.id));
+    const [{ data: dossiers }, { data: liens }] = await Promise.all([
+      supabase.from("dossiers").select("id").eq("collaborateur_id", collaborateur_id),
+      supabase
+        .from("dossier_collaborateurs")
+        .select("dossier_id")
+        .eq("profile_id", collaborateur_id),
+    ]);
+    const ids = new Set([
+      ...(dossiers ?? []).map((d) => d.id),
+      ...((liens ?? []) as { dossier_id: string }[]).map((l) => l.dossier_id),
+    ]);
     cibles = cibles.filter((c) => ids.has(c.dossier_id));
   }
 

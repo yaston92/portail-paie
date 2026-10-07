@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Dossier introuvable" }, { status: 404 });
   }
 
-  const [salaries, embauches, campagnes, saisies, absences, notes, bulletins, documents, soldes] =
+  const [salaries, embauches, campagnes, saisies, absences, notes, bulletins, documents, soldes, attestations] =
     await Promise.all([
       admin.from("salaries").select("*").eq("dossier_id", dossierId),
       admin.from("embauches").select("*").eq("dossier_id", dossierId),
@@ -46,6 +46,7 @@ export async function GET(request: Request) {
       admin.from("bulletins").select("*").eq("dossier_id", dossierId),
       admin.from("salarie_documents").select("*").eq("dossier_id", dossierId),
       admin.from("soldes_cp").select("*").eq("dossier_id", dossierId),
+      admin.from("dossier_attestations").select("*").eq("dossier_id", dossierId),
     ]);
 
   const zip = new JSZip();
@@ -58,6 +59,7 @@ export async function GET(request: Request) {
   donnees.file("absences.json", JSON.stringify(absences.data ?? [], null, 2));
   donnees.file("notes.json", JSON.stringify(notes.data ?? [], null, 2));
   donnees.file("soldes_cp.json", JSON.stringify(soldes.data ?? [], null, 2));
+  donnees.file("attestations.json", JSON.stringify(attestations.data ?? [], null, 2));
 
   // Bulletins publiés
   const dossierBulletins = zip.folder("bulletins")!;
@@ -67,6 +69,16 @@ export async function GET(request: Request) {
       dossierBulletins.file(b.nom_fichier, contenu);
     } catch {
       // fichier manquant : signalé dans le JSON
+    }
+  }
+
+  const dossierAttestations = zip.folder("attestations")!;
+  for (const a of attestations.data ?? []) {
+    try {
+      const contenu = await telechargerFichier("documents", a.chemin);
+      dossierAttestations.file(`${a.type}-${a.nom_fichier}`, contenu);
+    } catch {
+      // fichier manquant
     }
   }
 

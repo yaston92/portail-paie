@@ -2,7 +2,7 @@ import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { moisLabel, formatDate } from "@/lib/format";
 import { composerNoteAvecSortie, texteNoteSortie } from "@/lib/sortie";
 import { NATURE_LABELS, type Absence, type SaisieVariables, type Salarie } from "@/lib/types";
-import { totauxAbsences } from "@/lib/campagne";
+import { formaterDetailJoursAbsences, formaterPlagesJours, totauxAbsences } from "@/lib/campagne";
 
 interface RecapParams {
   sigle: string;
@@ -110,13 +110,8 @@ export async function genererRecapPdf(params: RecapParams): Promise<Uint8Array> 
           ligne(`Congés payés : ${cps.length} jour(s), ${formatNombrePdf(heures)} h`, {
             retrait: 12,
           });
-          const jours = cps
-            .sort((a, b) => a.jour.localeCompare(b.jour))
-            .map((a) => formatDate(a.jour))
-            .join(", ");
-          for (let i = 0; i < jours.length; i += 90) {
-            ligne(jours.slice(i, i + 90), { retrait: 24, taille: 8 });
-          }
+          const plage = formaterPlagesJours(cps.map((a) => a.jour));
+          if (plage) ligne(plage, { retrait: 24, taille: 9 });
           const note = composerNoteAvecSortie(saisie.note, salarie);
           if (note) {
             ligne(`Note : ${note}`, { retrait: 12, taille: 9 });
@@ -179,14 +174,10 @@ export async function genererRecapPdf(params: RecapParams): Promise<Uint8Array> 
             { retrait: 12 }
           );
         }
-        const jours = absences
-          .sort((a, b) => a.jour.localeCompare(b.jour))
-          .map((a) => `${formatDate(a.jour)} (${NATURE_LABELS[a.nature]})`)
-          .join(", ");
-        if (jours) {
-          // découpe en lignes de 90 caractères
-          for (let i = 0; i < jours.length; i += 90) {
-            ligne(jours.slice(i, i + 90), { retrait: 24, taille: 8 });
+        const detail = formaterDetailJoursAbsences(absences);
+        if (detail) {
+          for (let i = 0; i < detail.length; i += 90) {
+            ligne(detail.slice(i, i + 90), { retrait: 24, taille: 9 });
           }
         }
       }

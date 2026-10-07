@@ -47,7 +47,8 @@ export function EmbaucheActions({ embaucheId }: { embaucheId: string }) {
       toastError(json.error ?? "Échec du retour.");
       return;
     }
-    toastSuccess("Embauche retournée au client");
+    toastSuccess("Embauche renvoyée au client pour complément");
+    router.push("/cabinet/embauches");
     router.refresh();
   }
 

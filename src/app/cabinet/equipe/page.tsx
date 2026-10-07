@@ -36,14 +36,29 @@ export default async function EquipePage() {
       .eq("cabinet_id", cabinet.id),
   ]);
 
-  const nbDossiersParCollab = new Map<string, number>();
+  const idsDossiers = (dossiers ?? []).map((d) => d.id as string);
+  const { data: liens } = idsDossiers.length
+    ? await supabase
+        .from("dossier_collaborateurs")
+        .select("dossier_id, profile_id")
+        .in("dossier_id", idsDossiers)
+    : { data: [] as { dossier_id: string; profile_id: string }[] };
+  const dossiersParCollab = new Map<string, Set<string>>();
+  function ajouter(profileId: string | null, dossierId: string) {
+    if (!profileId) return;
+    const set = dossiersParCollab.get(profileId) ?? new Set<string>();
+    set.add(dossierId);
+    dossiersParCollab.set(profileId, set);
+  }
   for (const d of dossiers ?? []) {
-    if (d.collaborateur_id) {
-      nbDossiersParCollab.set(
-        d.collaborateur_id,
-        (nbDossiersParCollab.get(d.collaborateur_id) ?? 0) + 1
-      );
-    }
+    ajouter(d.collaborateur_id as string | null, d.id as string);
+  }
+  for (const lien of (liens ?? []) as { dossier_id: string; profile_id: string }[]) {
+    ajouter(lien.profile_id, lien.dossier_id);
+  }
+  const nbDossiersParCollab = new Map<string, number>();
+  for (const [profileId, set] of dossiersParCollab) {
+    nbDossiersParCollab.set(profileId, set.size);
   }
 
   type Ligne = {

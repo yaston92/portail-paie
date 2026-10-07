@@ -47,9 +47,6 @@ export async function calculerDashboard(
   if (cabinetId) {
     dossierQuery = dossierQuery.eq("cabinet_id", cabinetId);
   }
-  if (collaborateurId) {
-    dossierQuery = dossierQuery.eq("collaborateur_id", collaborateurId);
-  }
 
   const [{ data: dossiersData }, { data: campagnesData }, { data: collabs }] =
     await Promise.all([
@@ -78,7 +75,36 @@ export async function calculerDashboard(
             .order("nom"),
     ]);
 
-  const dossiers = (dossiersData ?? []) as Dossier[];
+  let dossiers = (dossiersData ?? []) as Dossier[];
+  const { data: affectations, error: errAffectations } = dossiers.length
+    ? await supabase
+        .from("dossier_collaborateurs")
+        .select("dossier_id, profile_id")
+        .in(
+          "dossier_id",
+          dossiers.map((d) => d.id)
+        )
+    : {
+        data: [] as { dossier_id: string; profile_id: string }[],
+        error: null,
+      };
+  const liens = errAffectations
+    ? []
+    : ((affectations ?? []) as { dossier_id: string; profile_id: string }[]);
+  if (collaborateurId) {
+    if (errAffectations) {
+      dossiers = dossiers.filter((d) => d.collaborateur_id === collaborateurId);
+    } else {
+      const ids = new Set(
+        liens
+          .filter((l) => l.profile_id === collaborateurId)
+          .map((l) => l.dossier_id)
+      );
+      dossiers = dossiers.filter(
+        (d) => d.collaborateur_id === collaborateurId || ids.has(d.id)
+      );
+    }
+  }
   const dossierIds = dossiers.map((d) => d.id);
   const campagneParDossier = new Map(
     ((campagnesData ?? []) as unknown as Campagne[])
@@ -155,9 +181,11 @@ export async function calculerDashboard(
       paiesEnvoyees > 0 || campagne?.statut === "bulletins_envoyes";
     return {
       dossier,
-      collaborateurNom: dossier.collaborateur_id
-        ? (nomCollab.get(dossier.collaborateur_id) ?? "-")
-        : "-",
+      collaborateurNom: nomsCollaborateurs(
+        dossier,
+        liens,
+        nomCollab
+      ),
       campagne,
       paiesAttendues,
       paiesEnvoyees,
@@ -190,4 +218,19 @@ export async function calculerDashboard(
   };
 
   return { lignes, totaux, collaborateurs };
+}
+
+function nomsCollaborateurs(
+  dossier: Dossier,
+  liens: { dossier_id: string; profile_id: string }[],
+  nomCollab: Map<string, string>
+): string {
+  const ids = liens
+    .filter((l) => l.dossier_id === dossier.id)
+    .map((l) => l.profile_id);
+  if (ids.length === 0 && dossier.collaborateur_id) ids.push(dossier.collaborateur_id);
+  const noms = [...new Set(ids)]
+    .map((id) => nomCollab.get(id))
+    .filter((n): n is string => !!n);
+  return noms.length > 0 ? noms.join(", ") : "-";
 }

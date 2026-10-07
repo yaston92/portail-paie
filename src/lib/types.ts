@@ -124,6 +124,8 @@ export interface Embauche {
   salaire_type: "brut" | "net" | null;
   /** Le client veut être rappelé : les autres champs peuvent être incomplets. */
   accompagnement: boolean;
+  /** Renseigné quand le cabinet a rappelé le client et retiré le badge. */
+  rappel_traite_at?: string | null;
   poste: string | null;
   note: string | null;
   commentaire_retour: string | null;
@@ -144,6 +146,8 @@ export interface Campagne {
   envoyee_at: string | null;
   recap_chemin: string | null;
   derniere_relance_at: string | null;
+  /** Cabinet a traité la campagne (variables prises en compte). */
+  traitee_at?: string | null;
   created_at: string;
 }
 
@@ -270,6 +274,8 @@ export interface ArretMaladie {
   justificatif_chemin: string | null;
   justificatif_nom: string | null;
   pending_sync: string[];
+  traite_at?: string | null;
+  traite_par?: string | null;
   created_at: string;
 }
 

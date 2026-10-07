@@ -9,7 +9,8 @@ import {
   RelancerCampagne,
   RouvrirCampagne,
 } from "@/components/campagne-cabinet-actions";
-import { CampagneStatutBadge } from "@/components/campagne-badge";
+import { campagneTraitee, CampagneStatutBadge } from "@/components/campagne-badge";
+import { TraiterCampagneButton } from "@/components/traiter-campagne-button";
 import { BulletinsUploadForm } from "@/components/bulletins-upload-form";
 import { NotesThread } from "@/components/notes-thread";
 import {
@@ -78,6 +79,9 @@ export default async function CabinetCampagneDetailPage({
         actions={
           <div className="flex items-center gap-3">
             <CampagneStatutBadge campagne={campagne} />
+            {campagne.statut !== "ouverte" && !campagneTraitee(campagne) && (
+              <TraiterCampagneButton campagneId={id} />
+            )}
             {campagne.statut === "ouverte" && <RelancerCampagne campagneId={id} />}
             {campagne.statut !== "ouverte" && <RouvrirCampagne campagneId={id} />}
             {campagne.recap_chemin && (

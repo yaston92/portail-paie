@@ -65,6 +65,45 @@ export function formaterDetailJoursAbsences(absences: Absence[]): string {
     .join(" ; ");
 }
 
+/**
+ * « Paies identiques » est impossible le premier mois, ou si un salarié
+ * est entré pendant le mois (il n'a pas de paie précédente comparable).
+ * Retourne le motif de blocage, ou null si la réponse « oui » est permise.
+ */
+export async function motifPaiesNonIdentiques(
+  supabase: SupabaseClient,
+  dossierId: string,
+  mois: string
+): Promise<string | null> {
+  const [annee, moisNum] = mois.split("-").map(Number);
+  const precedent = new Date(annee, moisNum - 2, 1);
+  const moisPrecedent = `${precedent.getFullYear()}-${String(precedent.getMonth() + 1).padStart(2, "0")}-01`;
+
+  const [{ data: campagnePrec }, attendus] = await Promise.all([
+    supabase
+      .from("campagnes")
+      .select("id, statut")
+      .eq("dossier_id", dossierId)
+      .eq("mois", moisPrecedent)
+      .maybeSingle(),
+    salariesAttendus(supabase, dossierId, mois),
+  ]);
+
+  if (!campagnePrec) {
+    return "C'est le premier mois de paie de ce dossier : les paies ne peuvent pas être identiques au mois précédent.";
+  }
+
+  const nouveaux = attendus.filter(
+    (s) => s.date_entree && s.date_entree.slice(0, 7) === mois.slice(0, 7)
+  );
+  if (nouveaux.length > 0) {
+    const noms = nouveaux.map((s) => `${s.prenom} ${s.nom}`).join(", ");
+    return `Un salarié est entré ce mois (${noms}) : les paies ne peuvent pas être identiques au mois précédent.`;
+  }
+
+  return null;
+}
+
 /** Salariés attendus dans une campagne : présents sur le mois (sortie incluse). */
 export async function salariesAttendus(
   supabase: SupabaseClient,

@@ -10,6 +10,8 @@ import { DossierEditForm } from "@/components/dossier-edit-form";
 import { InviterUtilisateur } from "@/components/inviter-utilisateur";
 import { RenvoyerAccesClient } from "@/components/renvoyer-acces-client";
 import { AjoutSalarieForm, ImportExcelForm } from "@/components/salarie-forms";
+import { AttestationsDossier } from "@/components/attestations-dossier";
+import type { AttestationDossier } from "@/lib/attestations";
 import {
   Badge,
   Card,
@@ -41,6 +43,8 @@ export default async function DossierDetailPage({
     accesClient,
     { data: campagneMois },
     { data: membresRows },
+    { data: liensCollab },
+    { data: attestations },
   ] = await Promise.all([
     supabase.from("dossiers").select("*").eq("id", id).maybeSingle(),
     supabase
@@ -58,6 +62,15 @@ export default async function DossierDetailPage({
     supabase
       .from("cabinet_membres")
       .select("cabinet_id, profile:profiles (id, nom, prenom)"),
+    supabase
+      .from("dossier_collaborateurs")
+      .select("profile_id")
+      .eq("dossier_id", id),
+    supabase
+      .from("dossier_attestations")
+      .select("id, dossier_id, type, nom_fichier, created_at")
+      .eq("dossier_id", id)
+      .order("created_at", { ascending: false }),
   ]);
 
   if (!dossier) notFound();
@@ -74,6 +87,13 @@ export default async function DossierDetailPage({
     }
   }
 
+  const collaborateursSelectionnes = (
+    (liensCollab ?? []) as { profile_id: string }[]
+  ).map((l) => l.profile_id);
+  if (collaborateursSelectionnes.length === 0 && d.collaborateur_id) {
+    collaborateursSelectionnes.push(d.collaborateur_id);
+  }
+
   const tous = (salaries ?? []) as Salarie[];
   const actifs = tous.filter((s) => estPresentSurMois(s, mois));
   const archives = tous.filter((s) => !estPresentSurMois(s, mois));
@@ -84,7 +104,17 @@ export default async function DossierDetailPage({
       <DossierCreeToast actif={cree === "1"} sigle={d.sigle} />
       <PageHeader
         titre={`${d.sigle} : ${d.raison_sociale}`}
-        sousTitre={d.archive ? "Dossier archivé" : undefined}
+        sousTitre={
+          [
+            d.archive ? "Dossier archivé" : null,
+            collaborateurs
+              .filter((c) => collaborateursSelectionnes.includes(c.id))
+              .map((c) => `${c.prenom} ${c.nom}`.trim())
+              .join(", ") || null,
+          ]
+            .filter(Boolean)
+            .join(" · ") || undefined
+        }
         actions={
           <div className="flex gap-2">
             <Link
@@ -145,6 +175,7 @@ export default async function DossierDetailPage({
               <DossierEditForm
                 dossier={d}
                 collaborateurs={(collaborateurs ?? []) as Profile[]}
+                selection={collaborateursSelectionnes}
               />
             ) : (
               <dl className="text-sm space-y-2">
@@ -236,6 +267,16 @@ export default async function DossierDetailPage({
           </CardBody>
         </Card>
       </div>
+
+      <Card>
+        <CardBody>
+          <AttestationsDossier
+            dossierId={id}
+            attestations={(attestations ?? []) as AttestationDossier[]}
+            peutDeposer
+          />
+        </CardBody>
+      </Card>
 
       <Card>
         <CardBody>

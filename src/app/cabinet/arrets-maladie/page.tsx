@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { aujourdhuiParis } from "@/lib/demandes-conge";
 import { formatDateCourte } from "@/lib/format";
 import { ReclamerJustificatifArret } from "@/components/reclamer-justificatif-arret";
+import { TraiterArretButton } from "@/components/traiter-arret-button";
 import {
   EmptyState,
   PageHeader,
@@ -30,6 +30,7 @@ function Tableau({ lignes }: { lignes: ArretLigne[] }) {
           <Th className="whitespace-nowrap text-center">Jours</Th>
           <Th className="whitespace-nowrap">Déclaré le</Th>
           <Th className="whitespace-nowrap">Justificatif</Th>
+          <Th className="whitespace-nowrap">Suivi</Th>
         </tr>
       </thead>
       <tbody className="divide-y divide-gray-100">
@@ -74,6 +75,13 @@ function Tableau({ lignes }: { lignes: ArretLigne[] }) {
                   <ReclamerJustificatifArret arretId={a.id} />
                 )}
               </Td>
+              <Td className="align-middle whitespace-nowrap">
+                {a.traite_at ? (
+                  <span className="text-sm text-gray-500">Traité</span>
+                ) : (
+                  <TraiterArretButton arretId={a.id} />
+                )}
+              </Td>
             </tr>
           );
         })}
@@ -101,15 +109,14 @@ export default async function CabinetArretsMaladiePage() {
     .limit(200);
 
   const liste = (data ?? []) as ArretLigne[];
-  const auj = aujourdhuiParis();
-  const enCours = liste.filter((a) => a.date_fin >= auj);
-  const historique = liste.filter((a) => a.date_fin < auj);
+  const enCours = liste.filter((a) => !a.traite_at);
+  const historique = liste.filter((a) => !!a.traite_at);
 
   return (
     <div className="space-y-6">
       <PageHeader
         titre="Arrêts maladie"
-        sousTitre={`${enCours.length} arrêt(s) en cours`}
+        sousTitre={`${enCours.length} arrêt(s) à traiter`}
       />
       {enCours.length === 0 && historique.length === 0 ? (
         <EmptyState message="Aucun arrêt maladie déclaré." />

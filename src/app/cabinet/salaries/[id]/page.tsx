@@ -13,6 +13,7 @@ import {
   SupprimerSalarieButton,
 } from "@/components/salarie-forms";
 import { ArretsMaladieListe } from "@/components/arrets-maladie-liste";
+import { NavigationSalaries } from "@/components/navigation-salaries";
 import {
   Badge,
   Card,
@@ -58,6 +59,7 @@ export default async function SalarieDetailPage({
     { data: solde },
     { data: compte },
     { data: arretsData },
+    { data: voisinsData },
   ] = await Promise.all([
     supabase.from("dossiers").select("*").eq("id", s.dossier_id).single(),
     supabase
@@ -78,15 +80,32 @@ export default async function SalarieDetailPage({
       .select("*")
       .eq("salarie_id", id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("salaries")
+      .select("id, nom, prenom")
+      .eq("dossier_id", s.dossier_id)
+      .order("nom"),
   ]);
 
   const d = dossier as Dossier;
   const docs = (documents ?? []) as SalarieDocument[];
   const cp = solde as SoldeCp | null;
   const arrets = (arretsData ?? []) as ArretMaladie[];
+  const voisins = (voisinsData ?? []) as { id: string; nom: string; prenom: string }[];
+  const indexVoisin = voisins.findIndex((v) => v.id === s.id);
+  const precedent = indexVoisin > 0 ? voisins[indexVoisin - 1] : null;
+  const suivant =
+    indexVoisin >= 0 && indexVoisin < voisins.length - 1
+      ? voisins[indexVoisin + 1]
+      : null;
 
   return (
     <div className="space-y-6">
+      <NavigationSalaries
+        precedent={precedent}
+        suivant={suivant}
+        base="/cabinet/salaries"
+      />
       <PageHeader
         titre={`${s.nom} ${s.prenom}`}
         sousTitre={`Dossier ${d.sigle} : ${d.raison_sociale}`}

@@ -75,23 +75,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "PDF vide." }, { status: 400 });
   }
 
-  const charsUtiles = textesPages.reduce((n, t) => n + t.trim().length, 0);
-  if (charsUtiles < 20) {
-    console.warn("[bulletins/upload] PDF sans couche texte:", {
-      name: fichier.name,
-      size: contenu.length,
-      pages: textesPages.length,
-      chars: charsUtiles,
-    });
-    return NextResponse.json(
-      {
-        error:
-          "Ce PDF n'a pas de texte extractible (souvent un export « image » ou une impression PDF). Dans le logiciel de paie, exportez un PDF texte (le texte doit être sélectionnable dans Aperçu / Adobe). Une capture ou un scan ne fonctionne pas.",
-      },
-      { status: 400 }
-    );
-  }
-
   const admin = createAdminClient();
   const salaries = await salariesAttendus(admin, dossierId, mois);
   const segments = detecterSegments(textesPages, salaries);

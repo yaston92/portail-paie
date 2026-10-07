@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { etatCampagne, saisieComplete } from "@/lib/campagne";
+import { etatCampagne, motifPaiesNonIdentiques, saisieComplete } from "@/lib/campagne";
 import { chargerNotes } from "@/lib/notes";
 import { formatDate, moisLabel } from "@/lib/format";
 import {
@@ -42,13 +42,18 @@ export default async function ClientCampagnePage({
 
   // --- Cas 1 : question d'entrée pas encore répondue ---
   if (campagne.statut === "ouverte" && campagne.paies_identiques === null) {
+    const motifBlocage = await motifPaiesNonIdentiques(
+      supabase,
+      profile.dossier_id!,
+      campagne.mois
+    );
     return (
       <div className="max-w-2xl mx-auto">
         <PageHeader
           titre={`Variables de paie : ${moisLabel(campagne.mois)}`}
           sousTitre={`Date limite : ${formatDate(campagne.date_limite)}`}
         />
-        <QuestionIdentiques campagneId={id} />
+        <QuestionIdentiques campagneId={id} motifBlocage={motifBlocage} />
       </div>
     );
   }
@@ -235,6 +240,22 @@ export default async function ClientCampagnePage({
         </CardBody>
       </Card>
 
+      <Card>
+        <CardBody>
+          <h2 className="font-semibold mb-3">Notes du mois</h2>
+          <p className="text-xs text-gray-500 mb-3">
+            Ajoutez ici ce qui ne rentre pas dans les cases (primes, acomptes,
+            situations particulières) avant de valider. Vous pouvez joindre des
+            pièces. Le cabinet peut vous répondre.
+          </p>
+          <NotesThread
+            dossierId={profile.dossier_id!}
+            campagneId={id}
+            notes={notesMois}
+          />
+        </CardBody>
+      </Card>
+
       {!verrouillee && (
         <Card>
           <CardBody>
@@ -250,22 +271,6 @@ export default async function ClientCampagnePage({
           </CardBody>
         </Card>
       )}
-
-      <Card>
-        <CardBody>
-          <h2 className="font-semibold mb-3">Notes du mois</h2>
-          <p className="text-xs text-gray-500 mb-3">
-            Expliquez ici ce qui ne rentre pas dans les cases (primes, acomptes,
-            situations particulières…). Vous pouvez joindre des pièces. Le
-            cabinet peut vous répondre.
-          </p>
-          <NotesThread
-            dossierId={profile.dossier_id!}
-            campagneId={id}
-            notes={notesMois}
-          />
-        </CardBody>
-      </Card>
     </div>
   );
 }

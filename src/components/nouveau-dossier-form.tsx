@@ -2,7 +2,8 @@
 
 import { useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Input, Label, Select } from "@/components/ui";
+import { Button, Input, Label } from "@/components/ui";
+import { ChoixCollaborateurs } from "@/components/choix-collaborateurs";
 import { toastError, toastSuccess } from "@/lib/toast";
 import { creerDossier } from "@/app/cabinet/dossiers/actions";
 import type { Profile } from "@/lib/types";
@@ -69,17 +70,7 @@ export function NouveauDossierForm({
           />
         </div>
       </div>
-      <div>
-        <Label>Collaborateur en charge</Label>
-        <Select name="collaborateur_id" defaultValue="">
-          <option value="">- Non affecté -</option>
-          {collaborateurs.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.prenom} {c.nom}
-            </option>
-          ))}
-        </Select>
-      </div>
+      <ChoixCollaborateurs collaborateurs={collaborateurs} selection={[]} />
       <Button type="submit" disabled={pending}>
         {pending ? "Création…" : "Créer le dossier"}
       </Button>

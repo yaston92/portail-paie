@@ -22,21 +22,26 @@ export default async function EquipeMembrePage({
   }
 
   const supabase = await createClient();
-  const [{ data: membreRow }, { data: dossiers }] = await Promise.all([
-    supabase
-      .from("cabinet_membres")
-      .select(
-        "role_membre, profile:profiles (id, nom, prenom, email, role, telephone)"
-      )
-      .eq("cabinet_id", cabinet.id)
-      .eq("profile_id", id)
-      .maybeSingle(),
-    supabase
-      .from("dossiers")
-      .select("id")
-      .eq("cabinet_id", cabinet.id)
-      .eq("collaborateur_id", id),
-  ]);
+  const [{ data: membreRow }, { data: dossiers }, { data: liens }] =
+    await Promise.all([
+      supabase
+        .from("cabinet_membres")
+        .select(
+          "role_membre, profile:profiles (id, nom, prenom, email, role, telephone)"
+        )
+        .eq("cabinet_id", cabinet.id)
+        .eq("profile_id", id)
+        .maybeSingle(),
+      supabase
+        .from("dossiers")
+        .select("id")
+        .eq("cabinet_id", cabinet.id)
+        .eq("collaborateur_id", id),
+      supabase
+        .from("dossier_collaborateurs")
+        .select("dossier_id")
+        .eq("profile_id", id),
+    ]);
 
   if (!membreRow) notFound();
 
@@ -47,7 +52,10 @@ export default async function EquipeMembrePage({
 
   const roleMembre = (membreRow as { role_membre: string }).role_membre;
   const role = roleEffectif(m.role, roleMembre);
-  const nbDossiers = dossiers?.length ?? 0;
+  const nbDossiers = new Set([
+    ...(dossiers ?? []).map((d) => d.id as string),
+    ...((liens ?? []) as { dossier_id: string }[]).map((l) => l.dossier_id),
+  ]).size;
 
   return (
     <div className="space-y-6 max-w-lg">

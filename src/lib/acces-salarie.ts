@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { envoyerEmail, gabaritEmail, styleBoutonEmail } from "@/lib/email";
 import { journaliser } from "@/lib/audit";
@@ -77,10 +78,19 @@ export async function getAccesSalariesBatch(
 
   const { data: profiles } =
     profileIds.length > 0
-      ? await admin.from("profiles").select("id, email").in("id", profileIds)
+      ? await admin
+          .from("profiles")
+          .select("id, email, doit_changer_mot_de_passe")
+          .in("id", profileIds)
       : { data: [] as { id: string; email: string | null }[] };
   const emailParProfile = new Map(
     (profiles ?? []).map((p) => [p.id as string, (p.email as string | null) ?? null])
+  );
+  const doitChangerParProfile = new Map(
+    (profiles ?? []).map((p) => [
+      p.id as string,
+      Boolean((p as { doit_changer_mot_de_passe?: boolean }).doit_changer_mot_de_passe),
+    ])
   );
 
   const authParId = new Map<
@@ -130,8 +140,9 @@ export async function getAccesSalariesBatch(
       last_sign_in_at: null,
       invited_at: null,
     };
+    const enAttente = doitChangerParProfile.get(profileId) || !auth.last_sign_in_at;
     out.set(id, {
-      statut: auth.last_sign_in_at ? "actif" : "invitation_en_attente",
+      statut: enAttente ? "invitation_en_attente" : "actif",
       email:
         emailParProfile.get(profileId) ||
         (salarie.email as string | null) ||
@@ -211,18 +222,36 @@ export async function inviterOuReinviterSalarie(opts: {
 
   if (!deja) {
     mode = "invite";
-    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-      type: "invite",
+    const { data: created, error: createError } = await admin.auth.admin.createUser({
       email,
-      options: { data: meta, redirectTo },
+      password: randomBytes(18).toString("base64url"),
+      email_confirm: true,
+      user_metadata: meta,
+    });
+    if (createError || !created.user) {
+      throw new Error("Échec de l'invitation : " + (createError?.message ?? ""));
+    }
+    userId = created.user.id;
+    await admin
+      .from("profiles")
+      .update({
+        doit_changer_mot_de_passe: true,
+        role: "salarie",
+        nom,
+        prenom,
+        dossier_id: opts.dossierId,
+        salarie_id: opts.salarieId,
+      })
+      .eq("id", userId);
+
+    const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+      type: "recovery",
+      email,
+      options: { redirectTo },
     });
     if (linkError) throw new Error("Échec de l'invitation : " + linkError.message);
 
-    userId =
-      (linkData as { user?: { id?: string } }).user?.id ||
-      (linkData as { properties?: { user_id?: string } }).properties?.user_id;
-
-    const lien = lienDepuisGenerateLink(linkData, appUrl, "invite");
+    const lien = lienDepuisGenerateLink(linkData, appUrl, "recovery");
     await envoyerLienActivation({
       email,
       prenom,
@@ -260,6 +289,7 @@ export async function inviterOuReinviterSalarie(opts: {
       nom,
       prenom,
       role: "salarie",
+      doit_changer_mot_de_passe: true,
     })
     .eq("id", deja.id);
 
@@ -268,15 +298,14 @@ export async function inviterOuReinviterSalarie(opts: {
     .update({ profile_id: deja.id, email })
     .eq("id", opts.salarieId);
 
-  // magiclink : fiable pour comptes déjà créés (invite/recovery selon état)
   const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
-    type: "magiclink",
+    type: "recovery",
     email,
     options: { redirectTo },
   });
   if (linkError) throw new Error("Impossible de régénérer le lien : " + linkError.message);
 
-  const lien = lienDepuisGenerateLink(linkData, appUrl, "magiclink");
+  const lien = lienDepuisGenerateLink(linkData, appUrl, "recovery");
   await envoyerLienActivation({ email, prenom, nom, lien, appUrl });
 
   await journaliser({

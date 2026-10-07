@@ -237,11 +237,13 @@ export async function POST(request: Request) {
   const detailPoste = poste || "poste non précisé";
   const detailDate = dateDebut ? `, à compter du ${dateDebut}` : "";
   const detailRappel = accompagnement
-    ? " Le client souhaite être rappelé pour un accompagnement."
+    ? " Rappel souhaité : le client veut être accompagné."
     : "";
   await notifier({
     userIds: await destinatairesCabinet(dossierId),
-    titre: `Nouvelle embauche à valider : ${dossier?.sigle ?? ""}`,
+    titre: accompagnement
+      ? `Embauche à valider, rappel souhaité : ${dossier?.sigle ?? ""}`
+      : `Nouvelle embauche à valider : ${dossier?.sigle ?? ""}`,
     corps: `${nom.toUpperCase()} ${prenom}, ${detailPoste}${detailDate}.${detailRappel}`,
     lien: `/cabinet/embauches/${idFinal}`,
   });

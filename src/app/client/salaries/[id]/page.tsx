@@ -9,6 +9,7 @@ import { SortieSalarieForm } from "@/components/salarie-forms";
 import { ArretMaladieClientForm } from "@/components/arret-maladie-form";
 import { ArretsMaladieListe } from "@/components/arrets-maladie-liste";
 import { HorairesSalarieForm } from "@/components/horaires-salarie-form";
+import { NavigationSalaries } from "@/components/navigation-salaries";
 import { labelMotifSortie } from "@/lib/sortie";
 import { Badge, Card, CardBody, PageHeader } from "@/components/ui";
 import type { ArretMaladie, Salarie } from "@/lib/types";
@@ -22,7 +23,7 @@ export default async function ClientSalarieDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data }, { data: arretsData }, acces] = await Promise.all([
+  const [{ data }, { data: arretsData }, { data: voisinsData }, acces] = await Promise.all([
     supabase
       .from("salaries")
       .select("*")
@@ -35,12 +36,24 @@ export default async function ClientSalarieDetailPage({
       .eq("dossier_id", profile.dossier_id!)
       .eq("salarie_id", id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("salaries")
+      .select("id, nom, prenom")
+      .eq("dossier_id", profile.dossier_id!)
+      .order("nom"),
     getAccesSalarie(id),
   ]);
 
   if (!data) notFound();
   const s = data as Salarie;
   const arrets = (arretsData ?? []) as ArretMaladie[];
+  const voisins = (voisinsData ?? []) as { id: string; nom: string; prenom: string }[];
+  const indexVoisin = voisins.findIndex((v) => v.id === s.id);
+  const precedent = indexVoisin > 0 ? voisins[indexVoisin - 1] : null;
+  const suivant =
+    indexVoisin >= 0 && indexVoisin < voisins.length - 1
+      ? voisins[indexVoisin + 1]
+      : null;
 
   return (
     <div className="space-y-6">
@@ -51,6 +64,11 @@ export default async function ClientSalarieDetailPage({
         >
           ← Retour aux salariés
         </Link>
+        <NavigationSalaries
+          precedent={precedent}
+          suivant={suivant}
+          base="/client/salaries"
+        />
         <PageHeader
           titre={`${s.nom} ${s.prenom}`}
           sousTitre={[
