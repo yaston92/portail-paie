@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getProfile, roleHome } from "@/lib/auth";
+import { getProfile, isCabinetRole, roleHome } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { SupprimerNotification } from "@/components/supprimer-notification";
 import { Card, CardBody, EmptyState, PageHeader } from "@/components/ui";
 import { formatDateTime } from "@/lib/format";
 import type { Notification } from "@/lib/types";
@@ -23,6 +25,15 @@ export default async function NotificationsPage() {
   if (!profile) redirect("/login");
 
   const supabase = await createClient();
+  if (profile.role === "client") {
+    const limite = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const admin = createAdminClient();
+    await admin
+      .from("notifications")
+      .delete()
+      .eq("user_id", profile.id)
+      .lt("created_at", limite);
+  }
   const { data } = await supabase
     .from("notifications")
     .select("*")
@@ -44,6 +55,13 @@ export default async function NotificationsPage() {
     <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
       <PageHeader
         titre="Notifications"
+        sousTitre={
+          profile.role === "client"
+            ? "Les notifications de plus de 30 jours sont retirées automatiquement."
+            : isCabinetRole(profile.role)
+              ? "Supprimez les notifications au fur et à mesure."
+              : undefined
+        }
         actions={
           <Link
             href={roleHome(profile.role)}
@@ -73,14 +91,19 @@ export default async function NotificationsPage() {
                           {texteNotif(n.corps)}
                         </p>
                       )}
-                      {n.lien && (
-                        <Link
-                          href={n.lien}
-                          className="text-sm text-blue-700 hover:underline"
-                        >
-                          Voir
-                        </Link>
-                      )}
+                      <div className="flex items-center gap-3 mt-1">
+                        {n.lien && (
+                          <Link
+                            href={n.lien}
+                            className="text-sm text-blue-700 hover:underline"
+                          >
+                            Voir
+                          </Link>
+                        )}
+                        {isCabinetRole(profile.role) && (
+                          <SupprimerNotification id={n.id} />
+                        )}
+                      </div>
                     </div>
                     <span className="text-xs text-gray-400 whitespace-nowrap">
                       {formatDateTime(n.created_at)}

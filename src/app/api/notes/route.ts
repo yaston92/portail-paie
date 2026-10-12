@@ -82,9 +82,10 @@ export async function POST(request: Request) {
     profile.role === "client"
       ? await destinatairesCabinet(dossierId)
       : await destinatairesClient(dossierId);
+  const versClient = profile.role !== "client";
   await notifier({
     userIds: destinataires,
-    titre: "Nouvelle note sur le portail paie",
+    titre: versClient ? "Note de votre cabinet" : "Nouvelle note du client",
     corps: contenu ? contenu.slice(0, 200) : "Pièce jointe déposée.",
     lien:
       profile.role === "client"
@@ -94,7 +95,7 @@ export async function POST(request: Request) {
         : campagneId
           ? `/client/variables/${campagneId}`
           : "/client",
-    email: false,
+    email: true,
   });
 
   return NextResponse.json({ ok: true, id: note.id });

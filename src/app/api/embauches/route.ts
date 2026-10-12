@@ -241,9 +241,11 @@ export async function POST(request: Request) {
     : "";
   await notifier({
     userIds: await destinatairesCabinet(dossierId),
-    titre: accompagnement
-      ? `Embauche à valider, rappel souhaité : ${dossier?.sigle ?? ""}`
-      : `Nouvelle embauche à valider : ${dossier?.sigle ?? ""}`,
+    titre: embaucheId
+      ? `Complément d'embauche reçu : ${dossier?.sigle ?? ""}`
+      : accompagnement
+        ? `Embauche à valider, rappel souhaité : ${dossier?.sigle ?? ""}`
+        : `Nouvelle embauche à valider : ${dossier?.sigle ?? ""}`,
     corps: `${nom.toUpperCase()} ${prenom}, ${detailPoste}${detailDate}.${detailRappel}`,
     lien: `/cabinet/embauches/${idFinal}`,
   });

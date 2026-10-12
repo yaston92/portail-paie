@@ -9,9 +9,11 @@ import type { Embauche } from "@/lib/types";
 interface Props {
   /** Si fourni : re-soumission d'une embauche retournée (pièces déjà déposées facultatives). */
   embauche?: Embauche;
+  /** Convention du dossier, affichée telle quelle. Le client ne la saisit pas. */
+  conventionCollective?: string | null;
 }
 
-export function EmbaucheForm({ embauche }: Props) {
+export function EmbaucheForm({ embauche, conventionCollective }: Props) {
   const router = useRouter();
   const [typeContrat, setTypeContrat] = useState(embauche?.type_contrat ?? "");
   const [dateDebut, setDateDebut] = useState(embauche?.date_debut ?? "");
@@ -78,6 +80,10 @@ export function EmbaucheForm({ embauche }: Props) {
         </Alert>
       )}
       {erreur && <Alert variant="error">{erreur}</Alert>}
+      <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+        <p className="text-gray-500">Convention collective du dossier</p>
+        <p className="font-medium">{conventionCollective?.trim() || "Non renseignée sur le dossier"}</p>
+      </div>
       {embauche?.commentaire_retour && (
         <Alert variant="warning">
           <span className="font-semibold">Retour du cabinet :</span>{" "}

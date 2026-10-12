@@ -10,9 +10,10 @@ import { ArretMaladieClientForm } from "@/components/arret-maladie-form";
 import { ArretsMaladieListe } from "@/components/arrets-maladie-liste";
 import { HorairesSalarieForm } from "@/components/horaires-salarie-form";
 import { NavigationSalaries } from "@/components/navigation-salaries";
+import { DocumentsSalarie } from "@/components/documents-salarie";
 import { labelMotifSortie } from "@/lib/sortie";
 import { Badge, Card, CardBody, PageHeader } from "@/components/ui";
-import type { ArretMaladie, Salarie } from "@/lib/types";
+import type { ArretMaladie, Salarie, SalarieDocument } from "@/lib/types";
 
 export default async function ClientSalarieDetailPage({
   params,
@@ -23,7 +24,8 @@ export default async function ClientSalarieDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data }, { data: arretsData }, { data: voisinsData }, acces] = await Promise.all([
+  const [{ data }, { data: arretsData }, { data: documentsData }, { data: voisinsData }, acces] =
+    await Promise.all([
     supabase
       .from("salaries")
       .select("*")
@@ -34,6 +36,11 @@ export default async function ClientSalarieDetailPage({
       .from("arrets_maladie")
       .select("*")
       .eq("dossier_id", profile.dossier_id!)
+      .eq("salarie_id", id)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("salarie_documents")
+      .select("id, salarie_id, dossier_id, type_document, nom_fichier, chemin, sensible, created_at")
       .eq("salarie_id", id)
       .order("created_at", { ascending: false }),
     supabase
@@ -156,6 +163,14 @@ export default async function ClientSalarieDetailPage({
               </details>
             </div>
           )}
+
+          <div className="border-t border-gray-100 pt-6">
+            <DocumentsSalarie
+              salarieId={s.id}
+              documents={(documentsData ?? []) as SalarieDocument[]}
+              peutDeposer={false}
+            />
+          </div>
 
           {arrets.length > 0 && (
             <div className="border-t border-gray-100 pt-6">

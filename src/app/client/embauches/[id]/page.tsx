@@ -16,12 +16,19 @@ export default async function ClientEmbaucheDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data } = await supabase
-    .from("embauches")
-    .select("*")
-    .eq("id", id)
-    .eq("dossier_id", profile.dossier_id!)
-    .maybeSingle();
+  const [{ data }, { data: dossier }] = await Promise.all([
+    supabase
+      .from("embauches")
+      .select("*")
+      .eq("id", id)
+      .eq("dossier_id", profile.dossier_id!)
+      .maybeSingle(),
+    supabase
+      .from("dossiers")
+      .select("convention_collective")
+      .eq("id", profile.dossier_id!)
+      .maybeSingle(),
+  ]);
   if (!data) notFound();
   const e = data as Embauche;
 
@@ -34,7 +41,13 @@ export default async function ClientEmbaucheDetailPage({
         />
         <Card>
           <CardBody>
-            <EmbaucheForm embauche={e} />
+            <EmbaucheForm
+              embauche={e}
+              conventionCollective={
+                (dossier as { convention_collective?: string | null } | null)
+                  ?.convention_collective
+              }
+            />
           </CardBody>
         </Card>
       </div>

@@ -5,10 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import { texteDureeHebdo, texteSalaire } from "@/lib/embauche-affichage";
 import { EmbaucheActions } from "@/components/embauche-actions";
+import { DocumentsSalarie } from "@/components/documents-salarie";
 import { LeverRappelEmbauche } from "@/components/lever-rappel-embauche";
 import { PiecesEmbauche } from "@/components/pieces-embauche";
 import { Alert, Badge, Card, CardBody, PageHeader } from "@/components/ui";
-import type { Dossier, Embauche } from "@/lib/types";
+import type { Dossier, Embauche, SalarieDocument } from "@/lib/types";
 
 export default async function CabinetEmbaucheDetailPage({
   params,
@@ -31,12 +32,21 @@ export default async function CabinetEmbaucheDetailPage({
   const { dossiers: _dossier, ...embauche } = row;
   const e = embauche as Embauche;
   const d = dossierJoint;
+  const { data: docsSalarie } = e.salarie_id
+    ? await supabase
+        .from("salarie_documents")
+        .select("id, salarie_id, dossier_id, type_document, nom_fichier, chemin, sensible, created_at")
+        .eq("salarie_id", e.salarie_id)
+        .order("created_at", { ascending: false })
+    : { data: [] as SalarieDocument[] };
 
   return (
     <div className="max-w-5xl space-y-4">
       <PageHeader
         titre={`Embauche : ${e.nom} ${e.prenom}`}
-        sousTitre={`Dossier ${d.sigle} : ${d.raison_sociale}`}
+        sousTitre={`Dossier ${d.sigle} : ${d.raison_sociale}${
+          d.convention_collective ? ` · Convention : ${d.convention_collective}` : ""
+        }`}
         actions={
           <Link
             href="/cabinet/embauches"
@@ -140,6 +150,28 @@ export default async function CabinetEmbaucheDetailPage({
           />
         </CardBody>
       </Card>
+
+      {e.salarie_id ? (
+        <Card>
+          <CardBody>
+            <DocumentsSalarie
+              salarieId={e.salarie_id}
+              documents={(docsSalarie ?? []) as SalarieDocument[]}
+              peutDeposer
+            />
+          </CardBody>
+        </Card>
+      ) : (
+        <Card>
+          <CardBody>
+            <h2 className="font-semibold mb-1">Contrat et DPAE</h2>
+            <p className="text-sm text-gray-600">
+              Validez la fiche pour créer le salarié. Le contrat, la DPAE et les autres
+              pièces se déposent ensuite ici, dans des compartiments visibles par le client.
+            </p>
+          </CardBody>
+        </Card>
+      )}
 
       {e.statut === "envoye" && (
         <Card>

@@ -14,6 +14,7 @@ import {
 } from "@/components/salarie-forms";
 import { ArretsMaladieListe } from "@/components/arrets-maladie-liste";
 import { NavigationSalaries } from "@/components/navigation-salaries";
+import { DocumentsSalarie } from "@/components/documents-salarie";
 import {
   Badge,
   Card,
@@ -27,14 +28,6 @@ import type {
   SalarieDocument,
   SoldeCp,
 } from "@/lib/types";
-
-const TYPE_DOC_LABELS: Record<string, string> = {
-  piece_identite_recto: "Pièce d'identité (recto)",
-  piece_identite_verso: "Pièce d'identité (verso)",
-  carte_vitale: "Carte vitale",
-  fin_contrat: "Fin de contrat",
-  autre: "Autre",
-};
 
 export default async function SalarieDetailPage({
   params,
@@ -202,34 +195,7 @@ export default async function SalarieDetailPage({
 
       <Card>
         <CardBody>
-          <h2 className="font-semibold mb-3">Documents ({docs.length})</h2>
-          {docs.length === 0 ? (
-            <p className="text-sm text-gray-500">Aucun document.</p>
-          ) : (
-            <ul className="text-sm divide-y divide-gray-100">
-              {docs.map((doc) => (
-                <li key={doc.id} className="py-2 flex items-center justify-between gap-3">
-                  <span>
-                    <Badge variant={doc.sensible ? "red" : "blue"}>
-                      {TYPE_DOC_LABELS[doc.type_document] ?? doc.type_document}
-                    </Badge>{" "}
-                    <span className="ml-1">{doc.nom_fichier}</span>
-                  </span>
-                  <span className="flex items-center gap-3 whitespace-nowrap">
-                    <span className="text-gray-400 text-xs">
-                      {formatDate(doc.created_at.slice(0, 10))}
-                    </span>
-                    <a
-                      href={`/api/documents/${doc.id}`}
-                      className="text-blue-700 hover:underline"
-                    >
-                      Télécharger
-                    </a>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
+          <DocumentsSalarie salarieId={id} documents={docs} peutDeposer />
         </CardBody>
       </Card>
 

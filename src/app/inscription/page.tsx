@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { ChampMotDePasse } from "@/components/champ-mot-de-passe";
 import { Alert, Button, Card, CardBody, Input, Label } from "@/components/ui";
 
 export default function InscriptionPage() {
@@ -108,9 +109,8 @@ export default function InscriptionPage() {
               </div>
               <div>
                 <Label htmlFor="password">Mot de passe (8 caractères min.)</Label>
-                <Input
+                <ChampMotDePasse
                   id="password"
-                  type="password"
                   autoComplete="new-password"
                   required
                   minLength={8}

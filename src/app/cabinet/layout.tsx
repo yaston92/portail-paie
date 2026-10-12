@@ -74,6 +74,14 @@ export default async function CabinetLayout({
       notificationsNonLues={count ?? 0}
       compteHref="/cabinet/compte"
     >
+      {profile.dossier_client_id && !profile.espace_origine && (
+        <a
+          href="/espace/client"
+          className="mb-4 block rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+        >
+          Ce compte a aussi un espace client. Ouvrir l&apos;espace client →
+        </a>
+      )}
       {children}
     </AppShell>
   );

@@ -81,9 +81,11 @@ export function InviterUtilisateur({
     }
     setEtat("ok");
     const ok = estClient
-      ? json.emailEnvoye === false
-        ? `Compte prêt pour ${email}. L'email n'est pas parti : communiquez le mot de passe vous-même.`
-        : `Compte prêt pour ${email}. Communiquez-lui le mot de passe (il n'est pas dans l'email).`
+      ? json.message
+        ? json.message
+        : json.emailEnvoye === false
+          ? `Compte prêt pour ${email}. L'email n'est pas parti : communiquez le mot de passe vous-même.`
+          : `Compte prêt pour ${email}. Communiquez-lui le mot de passe (il n'est pas dans l'email).`
       : json.mode === "reinvitation"
         ? `Nouveau lien d'activation envoyé à ${email}.`
         : `Invitation envoyée à ${email}.`;

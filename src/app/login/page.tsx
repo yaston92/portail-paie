@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { ChampMotDePasse } from "@/components/champ-mot-de-passe";
 import { Alert, Button, Card, CardBody, Input, Label } from "@/components/ui";
 
 export default function LoginPage() {
@@ -64,9 +65,8 @@ export default function LoginPage() {
               </div>
               <div>
                 <Label htmlFor="password">Mot de passe</Label>
-                <Input
+                <ChampMotDePasse
                   id="password"
-                  type="password"
                   autoComplete="current-password"
                   required
                   value={password}

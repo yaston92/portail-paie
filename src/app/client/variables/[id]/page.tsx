@@ -152,7 +152,7 @@ export default async function ClientCampagnePage({
                   href={`/client/variables/${id}/salarie/${s.id}`}
                   className="underline"
                 >
-                  {s.nom} {s.prenom}
+                  Saisir les variables : {s.nom} {s.prenom}
                 </Link>
               </li>
             ))}
@@ -177,6 +177,11 @@ export default async function ClientCampagnePage({
                     >
                       <span className="font-medium text-sm">
                         {s.nom} {s.prenom}
+                        {!verrouillee && (
+                          <span className="block text-xs text-blue-700 font-semibold mt-0.5">
+                            Saisir les variables
+                          </span>
+                        )}
                         {s.date_sortie && (
                           <span className="ml-2 text-xs text-amber-700">
                             (sortie le {formatDate(s.date_sortie)}

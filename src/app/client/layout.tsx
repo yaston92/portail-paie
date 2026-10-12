@@ -39,6 +39,14 @@ export default async function ClientLayout({
       items={items}
       notificationsNonLues={count ?? 0}
     >
+      {profile.espace_origine && (
+        <a
+          href="/espace/cabinet"
+          className="mb-4 block rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
+        >
+          Vous consultez l&apos;espace client de ce compte. Revenir à l&apos;espace cabinet →
+        </a>
+      )}
       {children}
     </AppShell>
   );

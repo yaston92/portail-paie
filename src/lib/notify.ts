@@ -62,12 +62,14 @@ export async function destinatairesCabinet(dossierId: string): Promise<string[]>
 /** Comptes client d'un dossier. */
 export async function destinatairesClient(dossierId: string): Promise<string[]> {
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("profiles")
-    .select("id")
-    .eq("role", "client")
-    .eq("dossier_id", dossierId);
-  return (data ?? []).map((c) => c.id);
+  const [{ data: clients }, { data: lies }] = await Promise.all([
+    admin.from("profiles").select("id").eq("role", "client").eq("dossier_id", dossierId),
+    admin.from("profiles").select("id").eq("dossier_client_id", dossierId),
+  ]);
+  const ids = new Set<string>();
+  for (const c of clients ?? []) ids.add(c.id);
+  for (const c of lies ?? []) ids.add(c.id);
+  return [...ids];
 }
 
 /** Clients de plusieurs dossiers en une requête : Map dossier_id → userIds. */

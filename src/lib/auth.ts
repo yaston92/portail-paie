@@ -1,6 +1,8 @@
 import { cache } from "react";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { COOKIE_ESPACE, HEADER_ESPACE } from "@/lib/espace";
 import type { Profile, UserRole } from "@/lib/types";
 import { ROLES_CABINET, isCabinetRole } from "@/lib/types";
 
@@ -35,8 +37,25 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
     .select("*")
     .eq("id", user.id)
     .single();
-  return (data as Profile) ?? null;
+  const profile = (data as Profile) ?? null;
+  if (!profile) return null;
+  return appliquerEspaceClient(profile);
 });
+
+/** Compte cabinet qui a aussi un dossier client : le cookie ou l'en-tête ouvre cet espace. */
+async function appliquerEspaceClient(profile: Profile): Promise<Profile> {
+  if (!profile.dossier_client_id || !isCabinetRole(profile.role)) return profile;
+  const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
+  const espace =
+    cookieStore.get(COOKIE_ESPACE)?.value || headerStore.get(HEADER_ESPACE);
+  if (espace !== "client") return profile;
+  return {
+    ...profile,
+    role: "client",
+    dossier_id: profile.dossier_client_id,
+    espace_origine: profile.role,
+  };
+}
 
 /**
  * Exige un rôle donné (pages serveur). Redirige vers /login si non connecté,

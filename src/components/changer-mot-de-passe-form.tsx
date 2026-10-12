@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Alert, Button, Card, CardBody, Input, Label } from "@/components/ui";
+import { ChampMotDePasse } from "@/components/champ-mot-de-passe";
+import { Alert, Button, Card, CardBody, Label } from "@/components/ui";
 import { toastSuccess } from "@/lib/toast";
 
 export function ChangerMotDePasseForm() {
@@ -65,9 +66,8 @@ export function ChangerMotDePasseForm() {
               {erreur && <Alert variant="error">{erreur}</Alert>}
               <div>
                 <Label htmlFor="password">Nouveau mot de passe</Label>
-                <Input
+                <ChampMotDePasse
                   id="password"
-                  type="password"
                   autoComplete="new-password"
                   required
                   minLength={8}
@@ -77,9 +77,8 @@ export function ChangerMotDePasseForm() {
               </div>
               <div>
                 <Label htmlFor="confirmation">Confirmation</Label>
-                <Input
+                <ChampMotDePasse
                   id="confirmation"
-                  type="password"
                   autoComplete="new-password"
                   required
                   minLength={8}

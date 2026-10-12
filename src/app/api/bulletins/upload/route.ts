@@ -3,7 +3,7 @@ import { getApiProfile, cabinetPeutAccederDossier } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { journaliser } from "@/lib/audit";
 import { uploaderFichier } from "@/lib/storage";
-import { detecterSegments, extraireTextesPages } from "@/lib/pdf-bulletins";
+import { detecterSegments, estPdfValide, extraireTextesPages, normaliserPdf } from "@/lib/pdf-bulletins";
 import { salariesAttendus } from "@/lib/campagne";
 
 export const runtime = "nodejs";
@@ -35,7 +35,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Dossier inaccessible" }, { status: 403 });
   }
 
-  const contenu = Buffer.from(await fichier.arrayBuffer());
+  const brut = Buffer.from(await fichier.arrayBuffer());
+  const contenu = normaliserPdf(brut);
+  if (!estPdfValide(contenu)) {
+    return NextResponse.json(
+      {
+        error:
+          "Ce fichier n'est pas un PDF valide. Réexportez-le depuis le logiciel de paie, sans le passer par un aperçu ou une photo.",
+      },
+      { status: 400 }
+    );
+  }
   console.info("[bulletins/upload] reçu", {
     name: fichier.name,
     type: fichier.type,
@@ -63,13 +73,8 @@ export async function POST(request: Request) {
       size: contenu.length,
       error: e,
     });
-    return NextResponse.json(
-      {
-        error:
-          "Impossible de lire ce PDF. Réexportez-le depuis le logiciel de paie (PDF natif). Si le problème continue, déposez le fichier côté web pour confirmer.",
-      },
-      { status: 400 }
-    );
+    console.error("[bulletins/upload] texte non lu, dépôt conservé pour affectation manuelle");
+    textesPages = [""];
   }
   if (textesPages.length === 0) {
     return NextResponse.json({ error: "PDF vide." }, { status: 400 });

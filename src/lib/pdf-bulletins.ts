@@ -34,10 +34,18 @@ export function normaliser(texte: string): string {
 }
 
 /** Vérifie l'en-tête PDF (%PDF-). */
+/** Certains exports ajoutent des octets avant %PDF-. On les retire. */
+export function normaliserPdf(contenu: Buffer): Buffer {
+  const fenetre = Math.min(contenu.length, 2048);
+  const tete = contenu.subarray(0, fenetre).toString("latin1");
+  const index = tete.indexOf("%PDF-");
+  if (index > 0) return contenu.subarray(index);
+  return contenu;
+}
+
 export function estPdfValide(contenu: Buffer): boolean {
   if (contenu.length < 5) return false;
-  const debut = contenu.subarray(0, 5).toString("latin1");
-  return debut === "%PDF-";
+  return normaliserPdf(contenu).subarray(0, 5).toString("latin1") === "%PDF-";
 }
 
 function standardFontsUrl(): string {
@@ -104,6 +112,7 @@ function textePageDepuisItems(items: unknown[]): string {
 
 /** Extrait le texte de chaque page du PDF (pdfjs legacy, sans worker). */
 export async function extraireTextesPages(pdf: Buffer): Promise<string[]> {
+  pdf = normaliserPdf(pdf);
   if (!estPdfValide(pdf)) {
     throw new Error("NOT_A_PDF");
   }

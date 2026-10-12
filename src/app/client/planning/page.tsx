@@ -9,7 +9,7 @@ export default async function ClientPlanningPage() {
     <div className="space-y-6">
       <PageHeader
         titre="Planning"
-        sousTitre="Qui est présent ou absent selon les horaires, congés et arrêts maladie"
+        sousTitre="Calendrier de lecture : qui est présent, en congé, en arrêt ou au repos. Rien ne se déclare ici, les informations viennent des horaires, des congés et des arrêts."
       />
       <PlanningClient />
     </div>

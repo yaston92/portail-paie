@@ -4,7 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
-import { Alert, Button, Card, CardBody, Input, Label } from "@/components/ui";
+import { ChampMotDePasse } from "@/components/champ-mot-de-passe";
+import { Alert, Button, Card, CardBody, Label } from "@/components/ui";
 
 /**
  * Après invitation / reset : le lien email peut amener token_hash ici.
@@ -180,9 +181,8 @@ function DefinirMotDePasseForm() {
           {erreur && <Alert variant="error">{erreur}</Alert>}
           <div>
             <Label htmlFor="password">Nouveau mot de passe</Label>
-            <Input
+            <ChampMotDePasse
               id="password"
-              type="password"
               autoComplete="new-password"
               required
               value={password}
@@ -191,9 +191,8 @@ function DefinirMotDePasseForm() {
           </div>
           <div>
             <Label htmlFor="confirmation">Confirmation</Label>
-            <Input
+            <ChampMotDePasse
               id="confirmation"
-              type="password"
               autoComplete="new-password"
               required
               value={confirmation}

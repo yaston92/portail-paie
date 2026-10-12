@@ -36,6 +36,10 @@ export interface Profile {
   email: string;
   telephone: string | null;
   dossier_id: string | null;
+  /** Dossier client ouvert avec le même email qu'un compte cabinet. */
+  dossier_client_id?: string | null;
+  /** Rôle cabinet d'origine quand l'espace client est ouvert. */
+  espace_origine?: UserRole | null;
   salarie_id: string | null;
   /** Mot de passe provisoire posé par le cabinet : à changer à la connexion. */
   doit_changer_mot_de_passe?: boolean;
