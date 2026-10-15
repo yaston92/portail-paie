@@ -48,46 +48,64 @@ export async function calculerDashboard(
     dossierQuery = dossierQuery.eq("cabinet_id", cabinetId);
   }
 
-  const [{ data: dossiersData }, { data: campagnesData }, { data: collabs }] =
-    await Promise.all([
-      dossierQuery,
-      cabinetId
-        ? supabase
-            .from("campagnes")
-            .select(
-              "id, dossier_id, mois, statut, date_limite, dossiers!inner(cabinet_id)"
-            )
-            .eq("mois", mois)
-            .eq("dossiers.cabinet_id", cabinetId)
-        : supabase
-            .from("campagnes")
-            .select("id, dossier_id, mois, statut, date_limite")
-            .eq("mois", mois),
-      cabinetId
-        ? supabase
-            .from("cabinet_membres")
-            .select("profile:profiles (id, nom, prenom)")
-            .eq("cabinet_id", cabinetId)
-        : supabase
-            .from("profiles")
-            .select("id, nom, prenom")
-            .in("role", ["directeur", "admin_cabinet", "collaborateur"])
-            .order("nom"),
-    ]);
+  const [
+    { data: dossiersData },
+    { data: campagnesData },
+    { data: collabs },
+    { data: affectations, error: errAffectations },
+    { data: salariesData },
+    { data: bulletinsData },
+  ] = await Promise.all([
+    dossierQuery,
+    cabinetId
+      ? supabase
+          .from("campagnes")
+          .select(
+            "id, dossier_id, mois, statut, date_limite, dossiers!inner(cabinet_id)"
+          )
+          .eq("mois", mois)
+          .eq("dossiers.cabinet_id", cabinetId)
+      : supabase
+          .from("campagnes")
+          .select("id, dossier_id, mois, statut, date_limite")
+          .eq("mois", mois),
+    cabinetId
+      ? supabase
+          .from("cabinet_membres")
+          .select("profile:profiles (id, nom, prenom)")
+          .eq("cabinet_id", cabinetId)
+      : supabase
+          .from("profiles")
+          .select("id, nom, prenom")
+          .in("role", ["directeur", "admin_cabinet", "collaborateur"])
+          .order("nom"),
+    cabinetId
+      ? supabase
+          .from("dossier_collaborateurs")
+          .select("dossier_id, profile_id, dossiers!inner(cabinet_id)")
+          .eq("dossiers.cabinet_id", cabinetId)
+      : supabase.from("dossier_collaborateurs").select("dossier_id, profile_id"),
+    cabinetId
+      ? supabase
+          .from("salaries")
+          .select(
+            "id, dossier_id, date_entree, date_sortie, dossiers!inner(cabinet_id, archive)"
+          )
+          .eq("dossiers.cabinet_id", cabinetId)
+          .eq("dossiers.archive", false)
+      : supabase
+          .from("salaries")
+          .select("id, dossier_id, date_entree, date_sortie"),
+    cabinetId
+      ? supabase
+          .from("bulletins")
+          .select("dossier_id, id, dossiers!inner(cabinet_id)")
+          .eq("mois", mois)
+          .eq("dossiers.cabinet_id", cabinetId)
+      : supabase.from("bulletins").select("dossier_id, id").eq("mois", mois),
+  ]);
 
   let dossiers = (dossiersData ?? []) as Dossier[];
-  const { data: affectations, error: errAffectations } = dossiers.length
-    ? await supabase
-        .from("dossier_collaborateurs")
-        .select("dossier_id, profile_id")
-        .in(
-          "dossier_id",
-          dossiers.map((d) => d.id)
-        )
-    : {
-        data: [] as { dossier_id: string; profile_id: string }[],
-        error: null,
-      };
   const liens = errAffectations
     ? []
     : ((affectations ?? []) as { dossier_id: string; profile_id: string }[]);
@@ -127,23 +145,7 @@ export async function calculerDashboard(
     collaborateurs.map((c) => [c.id, `${c.prenom} ${c.nom}`.trim()])
   );
 
-  // Salariés (pour compter les paies attendues) et bulletins publiés du mois
-  const [{ data: salariesData }, { data: bulletinsData }] = await Promise.all([
-    dossierIds.length
-      ? supabase
-          .from("salaries")
-          .select("id, dossier_id, date_entree, date_sortie")
-          .in("dossier_id", dossierIds)
-      : Promise.resolve({ data: [] }),
-    dossierIds.length
-      ? supabase
-          .from("bulletins")
-          .select("dossier_id, id")
-          .eq("mois", mois)
-          .in("dossier_id", dossierIds)
-      : Promise.resolve({ data: [] }),
-  ]);
-
+  const idsRestants = new Set(dossierIds);
   const salariesParDossier = new Map<
     string,
     Pick<Salarie, "id" | "dossier_id" | "date_entree" | "date_sortie">[]
@@ -152,12 +154,14 @@ export async function calculerDashboard(
     Salarie,
     "id" | "dossier_id" | "date_entree" | "date_sortie"
   >[]) {
+    if (!idsRestants.has(s.dossier_id)) continue;
     const liste = salariesParDossier.get(s.dossier_id) ?? [];
     liste.push(s);
     salariesParDossier.set(s.dossier_id, liste);
   }
   const bulletinsParDossier = new Map<string, number>();
   for (const b of (bulletinsData ?? []) as { dossier_id: string }[]) {
+    if (!idsRestants.has(b.dossier_id)) continue;
     bulletinsParDossier.set(
       b.dossier_id,
       (bulletinsParDossier.get(b.dossier_id) ?? 0) + 1

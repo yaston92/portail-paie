@@ -178,7 +178,7 @@ export default async function ClientCampagnePage({
                       <span className="font-medium text-sm">
                         {s.nom} {s.prenom}
                         {!verrouillee && (
-                          <span className="block text-xs text-blue-700 font-semibold mt-0.5">
+                          <span className="mt-1 inline-block rounded-md bg-blue-700 px-2 py-1 text-xs font-semibold text-white">
                             Saisir les variables
                           </span>
                         )}
@@ -211,9 +211,9 @@ export default async function ClientCampagnePage({
                     </Link>
                   </div>
                   {peutSortir && (
-                    <details className="px-2 pb-2">
-                      <summary className="text-xs text-red-700 cursor-pointer">
-                        Déclarer une sortie
+                    <details className="px-2 pb-1">
+                      <summary className="cursor-pointer text-[11px] font-normal text-gray-500">
+                        Sortie
                       </summary>
                       <div className="mt-2 max-w-md">
                         <SortieSalarieForm
@@ -226,8 +226,8 @@ export default async function ClientCampagnePage({
                   )}
                   {!verrouillee && s.statut === "actif" && (
                     <details className="px-2 pb-2">
-                      <summary className="text-xs text-amber-800 cursor-pointer">
-                        Déclarer un arrêt maladie
+                      <summary className="cursor-pointer text-[11px] font-normal text-gray-500">
+                        Arrêt maladie
                       </summary>
                       <div className="mt-2 max-w-md">
                         <ArretMaladieClientForm

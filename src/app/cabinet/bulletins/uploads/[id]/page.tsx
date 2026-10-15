@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { requireRole, cabinetPeutAccederDossier } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { salariesAttendus } from "@/lib/campagne";
 import { moisLabel } from "@/lib/format";
@@ -25,10 +25,6 @@ export default async function ControleUploadPage({
   if (!uploadData) notFound();
   const upload = uploadData as BulletinUpload;
 
-  if (!(await cabinetPeutAccederDossier(upload.dossier_id))) {
-    notFound();
-  }
-
   const [{ data: dossier }, { data: segments }, salaries] = await Promise.all([
     supabase.from("dossiers").select("*").eq("id", upload.dossier_id).single(),
     supabase
@@ -38,13 +34,15 @@ export default async function ControleUploadPage({
       .order("page_debut"),
     salariesAttendus(supabase, upload.dossier_id, upload.mois),
   ]);
+  if (!dossier) notFound();
   const d = dossier as Dossier;
+  const listeSegments = (segments ?? []) as BulletinSegment[];
 
   return (
     <div className="space-y-6">
       <PageHeader
         titre={`Contrôle des bulletins : ${d.sigle} (${moisLabel(upload.mois)})`}
-        sousTitre={`${upload.nb_pages ?? "?"} pages analysées : vérifiez l'appariement de chaque bulletin avant publication.`}
+        sousTitre="Confirmez que chaque bulletin correspond aux bonnes pages, corrigez le découpage, puis publiez."
         actions={
           <Link
             href="/cabinet/bulletins"
@@ -64,7 +62,7 @@ export default async function ControleUploadPage({
 
       <SegmentsControle
         uploadId={id}
-        segments={(segments ?? []) as BulletinSegment[]}
+        segments={listeSegments}
         salaries={salaries.map((s) => ({
           id: s.id,
           nom: s.nom,
@@ -72,6 +70,7 @@ export default async function ControleUploadPage({
           matricule: s.matricule,
         }))}
         publie={upload.statut === "publie"}
+        nbPages={upload.nb_pages ?? Math.max(1, ...listeSegments.map((s) => s.page_fin))}
       />
     </div>
   );

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { getProfile, isCabinetRole, roleHome } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -25,30 +26,38 @@ export default async function NotificationsPage() {
   if (!profile) redirect("/login");
 
   const supabase = await createClient();
-  if (profile.role === "client") {
-    const limite = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const admin = createAdminClient();
-    await admin
-      .from("notifications")
-      .delete()
-      .eq("user_id", profile.id)
-      .lt("created_at", limite);
-  }
-  const { data } = await supabase
+  const limite =
+    profile.role === "client"
+      ? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      : null;
+  const admin = limite ? createAdminClient() : null;
+  let query = supabase
     .from("notifications")
     .select("*")
     .eq("user_id", profile.id)
     .order("created_at", { ascending: false })
     .limit(100);
+  if (limite) query = query.gte("created_at", limite);
+  const [{ data }] = await Promise.all([
+    query,
+    admin
+      ? admin
+          .from("notifications")
+          .delete()
+          .eq("user_id", profile.id)
+          .lt("created_at", limite!)
+      : Promise.resolve(),
+  ]);
   const notifications = (data ?? []) as Notification[];
 
-  const nonLuesVisibles = notifications.some((n) => !n.lu);
-  if (nonLuesVisibles || notifications.length === 100) {
-    await supabase
-      .from("notifications")
-      .update({ lu: true })
-      .eq("user_id", profile.id)
-      .eq("lu", false);
+  if (notifications.some((n) => !n.lu) || notifications.length === 100) {
+    after(async () => {
+      await supabase
+        .from("notifications")
+        .update({ lu: true })
+        .eq("user_id", profile.id)
+        .eq("lu", false);
+    });
   }
 
   return (

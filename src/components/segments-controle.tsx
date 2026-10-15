@@ -19,6 +19,29 @@ interface Props {
   segments: BulletinSegment[];
   salaries: SalarieOption[];
   publie: boolean;
+  nbPages: number;
+}
+
+function couverture(segments: BulletinSegment[], nbPages: number) {
+  const vues = new Array(nbPages + 1).fill(0);
+  for (const s of segments) {
+    const debut = Math.max(1, s.page_debut);
+    const fin = Math.min(nbPages, s.page_fin);
+    for (let p = debut; p <= fin; p++) vues[p] += 1;
+  }
+  const manquantes: number[] = [];
+  const doubles: number[] = [];
+  for (let p = 1; p <= nbPages; p++) {
+    if (vues[p] === 0) manquantes.push(p);
+    if (vues[p] > 1) doubles.push(p);
+  }
+  return { manquantes, doubles };
+}
+
+function listePages(pages: number[]): string {
+  if (pages.length === 0) return "";
+  if (pages.length <= 8) return pages.join(", ");
+  return `${pages.slice(0, 8).join(", ")}…`;
 }
 
 /**
@@ -26,7 +49,13 @@ interface Props {
  * chaque segment (plage de pages) doit être rattaché au bon salarié.
  * Les soldes de CP extraits sont vérifiables et corrigeables.
  */
-export function SegmentsControle({ uploadId, segments: initiaux, salaries, publie }: Props) {
+export function SegmentsControle({
+  uploadId,
+  segments: initiaux,
+  salaries,
+  publie,
+  nbPages,
+}: Props) {
   const router = useRouter();
   const [segments, setSegments] = useState(initiaux);
   const [erreur, setErreur] = useState<string | null>(null);
@@ -73,6 +102,114 @@ export function SegmentsControle({ uploadId, segments: initiaux, salaries, publi
     await supabase.from("bulletin_segments").delete().eq("id", segmentId);
   }
 
+  function trier(liste: BulletinSegment[]) {
+    return [...liste].sort((a, b) => a.page_debut - b.page_debut || a.page_fin - b.page_fin);
+  }
+
+  async function changerPages(segmentId: string, debutBrut: string, finBrut: string) {
+    const debut = Number(debutBrut);
+    const fin = Number(finBrut);
+    if (!Number.isInteger(debut) || !Number.isInteger(fin) || debut < 1 || fin < debut || fin > nbPages) {
+      toastError(`Indiquez des pages entre 1 et ${nbPages}, la fin après le début.`);
+      return;
+    }
+    setSegments((prev) =>
+      trier(prev.map((s) => (s.id === segmentId ? { ...s, page_debut: debut, page_fin: fin } : s)))
+    );
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("bulletin_segments")
+      .update({ page_debut: debut, page_fin: fin })
+      .eq("id", segmentId);
+    if (error) {
+      toastError("Impossible d'enregistrer ces pages.");
+      return;
+    }
+    toastSuccess(`Bulletin recalé sur les pages ${debut} à ${fin}.`);
+  }
+
+  async function couper(segment: BulletinSegment, apresBrut: string) {
+    const apres = Number(apresBrut);
+    if (!Number.isInteger(apres) || apres < segment.page_debut || apres >= segment.page_fin) {
+      toastError("Choisissez une page au milieu du bulletin pour le couper.");
+      return;
+    }
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("bulletin_segments")
+      .update({ page_fin: apres })
+      .eq("id", segment.id);
+    if (error) {
+      toastError("Découpe impossible.");
+      return;
+    }
+    const { data, error: insertError } = await supabase
+      .from("bulletin_segments")
+      .insert({
+        upload_id: uploadId,
+        page_debut: apres + 1,
+        page_fin: segment.page_fin,
+        salarie_id: null,
+      })
+      .select("*")
+      .single();
+    if (insertError || !data) {
+      toastError("La deuxième partie n'a pas été créée.");
+      return;
+    }
+    setSegments((prev) =>
+      trier(
+        prev.map((s) => (s.id === segment.id ? { ...s, page_fin: apres } : s)).concat(data as BulletinSegment)
+      )
+    );
+    toastSuccess(`Coupé après la page ${apres}. Affectez le nouveau bulletin.`);
+  }
+
+  async function fusionner(index: number) {
+    const courant = segments[index];
+    const suivant = segments[index + 1];
+    if (!courant || !suivant) return;
+    const pageDebut = Math.min(courant.page_debut, suivant.page_debut);
+    const pageFin = Math.max(courant.page_fin, suivant.page_fin);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("bulletin_segments")
+      .update({ page_debut: pageDebut, page_fin: pageFin })
+      .eq("id", courant.id);
+    if (error) {
+      toastError("Fusion impossible.");
+      return;
+    }
+    await supabase.from("bulletin_segments").delete().eq("id", suivant.id);
+    setSegments((prev) =>
+      trier(
+        prev
+          .filter((s) => s.id !== suivant.id)
+          .map((s) => (s.id === courant.id ? { ...s, page_debut: pageDebut, page_fin: pageFin } : s))
+      )
+    );
+    toastSuccess("Les deux parties forment un seul bulletin.");
+  }
+
+  async function ajouterBulletin() {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("bulletin_segments")
+      .insert({
+        upload_id: uploadId,
+        page_debut: 1,
+        page_fin: 1,
+        salarie_id: null,
+      })
+      .select("*")
+      .single();
+    if (error || !data) {
+      toastError("Impossible d'ajouter un bulletin.");
+      return;
+    }
+    setSegments((prev) => trier(prev.concat(data as BulletinSegment)));
+  }
+
   async function publier() {
     setErreur(null);
     setPublication(true);
@@ -93,6 +230,8 @@ export function SegmentsControle({ uploadId, segments: initiaux, salaries, publi
     router.refresh();
   }
 
+  const { manquantes, doubles } = couverture(segments, nbPages);
+
   function nomSalarie(id: string | null) {
     const s = salaries.find((x) => x.id === id);
     return s ? `${s.nom} ${s.prenom}` : null;
@@ -103,18 +242,34 @@ export function SegmentsControle({ uploadId, segments: initiaux, salaries, publi
       {erreur && <Alert variant="error">{erreur}</Alert>}
       {message && <Alert variant="success">{message}</Alert>}
 
+      <p className="text-sm text-gray-600">
+        {nbPages} page{nbPages > 1 ? "s" : ""} dans le PDF, {segments.length} bulletin
+        {segments.length > 1 ? "s" : ""} détecté{segments.length > 1 ? "s" : ""}. Ouvrez
+        chaque PDF pour confirmer le découpage, puis corrigez les pages si besoin.
+      </p>
+
       {!publie && (
         <div className="flex flex-wrap items-center gap-3">
           {nonApparies > 0 ? (
-            <Badge variant="red">{nonApparies} segment(s) non apparié(s)</Badge>
+            <Badge variant="red">{nonApparies} bulletin(s) sans salarié</Badge>
           ) : (
-            <Badge variant="green">Tous les segments sont appariés</Badge>
+            <Badge variant="green">Chaque bulletin a un salarié</Badge>
+          )}
+          {manquantes.length === 0 && doubles.length === 0 ? (
+            <Badge variant="green">Toutes les pages sont couvertes une fois</Badge>
+          ) : null}
+          {manquantes.length > 0 && (
+            <Badge variant="amber">Pages non attribuées : {listePages(manquantes)}</Badge>
+          )}
+          {doubles.length > 0 && (
+            <Badge variant="red">Pages en double : {listePages(doubles)}</Badge>
           )}
           {doublons.size > 0 && (
-            <Badge variant="amber">
-              Attention : un même salarié est affecté à plusieurs segments
-            </Badge>
+            <Badge variant="amber">Un même salarié est sur plusieurs bulletins</Badge>
           )}
+          <Button type="button" variant="secondary" onClick={() => void ajouterBulletin()}>
+            Ajouter un bulletin
+          </Button>
         </div>
       )}
 
@@ -133,12 +288,76 @@ export function SegmentsControle({ uploadId, segments: initiaux, salaries, publi
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {segments.map((seg) => (
+          {segments.map((seg, index) => (
             <tr key={seg.id} className={!seg.salarie_id && !publie ? "bg-red-50" : ""}>
               <Td className="whitespace-nowrap">
-                {seg.page_debut === seg.page_fin
-                  ? `p. ${seg.page_debut}`
-                  : `p. ${seg.page_debut}–${seg.page_fin}`}
+                {publie ? (
+                  seg.page_debut === seg.page_fin
+                    ? `p. ${seg.page_debut}`
+                    : `p. ${seg.page_debut}–${seg.page_fin}`
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1">
+                      <input
+                        key={`${seg.id}-d-${seg.page_debut}`}
+                        type="number"
+                        min={1}
+                        max={nbPages}
+                        defaultValue={seg.page_debut}
+                        aria-label="Page de début"
+                        onBlur={(e) =>
+                          void changerPages(seg.id, e.target.value, String(seg.page_fin))
+                        }
+                        className="w-14 rounded border border-gray-300 px-1 py-1 text-sm"
+                      />
+                      <span className="text-gray-400">à</span>
+                      <input
+                        key={`${seg.id}-f-${seg.page_fin}`}
+                        type="number"
+                        min={1}
+                        max={nbPages}
+                        defaultValue={seg.page_fin}
+                        aria-label="Page de fin"
+                        onBlur={(e) =>
+                          void changerPages(seg.id, String(seg.page_debut), e.target.value)
+                        }
+                        className="w-14 rounded border border-gray-300 px-1 py-1 text-sm"
+                      />
+                    </div>
+                    {seg.page_fin > seg.page_debut && (
+                      <form
+                        className="flex items-center gap-1"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const valeur = new FormData(e.currentTarget).get("apres");
+                          void couper(seg, String(valeur ?? ""));
+                        }}
+                      >
+                        <span className="text-[11px] text-gray-500">Couper après</span>
+                        <input
+                          name="apres"
+                          type="number"
+                          min={seg.page_debut}
+                          max={seg.page_fin - 1}
+                          defaultValue={seg.page_debut}
+                          className="w-14 rounded border border-gray-300 px-1 py-0.5 text-xs"
+                        />
+                        <button type="submit" className="text-xs text-blue-700 hover:underline">
+                          Couper
+                        </button>
+                      </form>
+                    )}
+                    {index < segments.length - 1 && (
+                      <button
+                        type="button"
+                        onClick={() => void fusionner(index)}
+                        className="block text-xs text-blue-700 hover:underline"
+                      >
+                        Fusionner avec le suivant
+                      </button>
+                    )}
+                  </div>
+                )}
               </Td>
               <Td>
                 <a
@@ -233,12 +452,20 @@ export function SegmentsControle({ uploadId, segments: initiaux, salaries, publi
 
       {!publie && (
         <div className="flex items-center gap-4">
-          <Button onClick={publier} disabled={publication || nonApparies > 0}>
+          <Button
+            onClick={publier}
+            disabled={publication || nonApparies > 0 || doubles.length > 0}
+          >
             {publication ? "Publication…" : "Publier les bulletins"}
           </Button>
           {nonApparies > 0 && (
             <span className="text-sm text-red-600">
-              Appariez tous les segments avant de publier.
+              Affectez chaque bulletin à un salarié avant de publier.
+            </span>
+          )}
+          {doubles.length > 0 && (
+            <span className="text-sm text-red-600">
+              Des pages se recouvrent. Ajustez le découpage avant de publier.
             </span>
           )}
         </div>

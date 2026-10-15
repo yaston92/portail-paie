@@ -41,27 +41,24 @@ export default async function CabinetCampagneDetailPage({
   if (!data) notFound();
   const campagne = data as Campagne;
 
-  const [{ data: dossier }, etat] = await Promise.all([
+  const [{ data: dossier }, etat, notesMois, { data: absences }] = await Promise.all([
     supabase
       .from("dossiers")
       .select("id, sigle, raison_sociale")
       .eq("id", campagne.dossier_id)
       .single(),
     etatCampagne(supabase, id, campagne.dossier_id, campagne.mois),
-  ]);
-  const d = dossier as Pick<Dossier, "id" | "sigle" | "raison_sociale">;
-
-  const saisieIds = [...etat.saisiesParSalarie.values()].map((s) => s.id);
-  const [notesMois, { data: absences }] = await Promise.all([
     chargerNotes(supabase, {
       dossierId: campagne.dossier_id,
       campagneId: id,
       salarieId: null,
     }),
-    saisieIds.length
-      ? supabase.from("absences").select("*").in("saisie_id", saisieIds)
-      : Promise.resolve({ data: [] as Absence[] }),
+    supabase
+      .from("absences")
+      .select("*, saisies_variables!inner(campagne_id)")
+      .eq("saisies_variables.campagne_id", id),
   ]);
+  const d = dossier as Pick<Dossier, "id" | "sigle" | "raison_sociale">;
   const absencesParSaisie = new Map<string, Absence[]>();
   for (const a of (absences ?? []) as Absence[]) {
     const liste = absencesParSaisie.get(a.saisie_id) ?? [];

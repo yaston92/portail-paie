@@ -15,7 +15,7 @@ export interface AccesClientInfo {
 
 export async function getAccesClientDossier(dossierId: string): Promise<AccesClientInfo> {
   const admin = createAdminClient();
-  const [{ data: dossier }, { data: clients }] = await Promise.all([
+  const [{ data: dossier }, { data: clients }, { data: lie }] = await Promise.all([
     admin.from("dossiers").select("email").eq("id", dossierId).maybeSingle(),
     admin
       .from("profiles")
@@ -24,15 +24,15 @@ export async function getAccesClientDossier(dossierId: string): Promise<AccesCli
       .eq("role", "client")
       .order("created_at", { ascending: false })
       .limit(5),
-  ]);
-
-  if (!clients?.length) {
-    const { data: lie } = await admin
+    admin
       .from("profiles")
       .select("id, email")
       .eq("dossier_client_id", dossierId)
       .limit(1)
-      .maybeSingle();
+      .maybeSingle(),
+  ]);
+
+  if (!clients?.length) {
     if (lie?.email) {
       return {
         statut: "actif",

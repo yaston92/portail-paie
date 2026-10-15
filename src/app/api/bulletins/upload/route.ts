@@ -3,7 +3,14 @@ import { getApiProfile, cabinetPeutAccederDossier } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { journaliser } from "@/lib/audit";
 import { uploaderFichier } from "@/lib/storage";
-import { detecterSegments, estPdfValide, extraireTextesPages, normaliserPdf } from "@/lib/pdf-bulletins";
+import {
+  compterPagesPdf,
+  detecterSegments,
+  estPdfValide,
+  extraireTextesPages,
+  normaliserPdf,
+  segmentsUnePageChacun,
+} from "@/lib/pdf-bulletins";
 import { salariesAttendus } from "@/lib/campagne";
 
 export const runtime = "nodejs";
@@ -53,8 +60,14 @@ export async function POST(request: Request) {
     magic: contenu.subarray(0, 8).toString("latin1"),
   });
 
-  // Analyse du PDF (texte extractible requis : pas une photo/scan)
+  // Analyse du PDF. Le nombre de pages vient du fichier, pas du texte lu.
   let textesPages: string[];
+  let nbPages: number;
+  try {
+    nbPages = await compterPagesPdf(contenu);
+  } catch {
+    return NextResponse.json({ error: "PDF vide ou illisible." }, { status: 400 });
+  }
   try {
     textesPages = await extraireTextesPages(contenu);
   } catch (e) {
@@ -73,16 +86,21 @@ export async function POST(request: Request) {
       size: contenu.length,
       error: e,
     });
-    console.error("[bulletins/upload] texte non lu, dépôt conservé pour affectation manuelle");
-    textesPages = [""];
+    textesPages = [];
   }
-  if (textesPages.length === 0) {
+  while (textesPages.length < nbPages) textesPages.push("");
+  if (textesPages.length > nbPages) textesPages = textesPages.slice(0, nbPages);
+  if (nbPages === 0) {
     return NextResponse.json({ error: "PDF vide." }, { status: 400 });
   }
 
   const admin = createAdminClient();
   const salaries = await salariesAttendus(admin, dossierId, mois);
-  const segments = detecterSegments(textesPages, salaries);
+  const texteVide = textesPages.every((t) => !t.trim());
+  const segments =
+    texteVide && nbPages > 1
+      ? segmentsUnePageChacun(nbPages)
+      : detecterSegments(textesPages, salaries);
 
   // Stockage du PDF global
   const { data: upload, error } = await admin

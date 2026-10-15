@@ -110,8 +110,8 @@ export default async function SaisieSalariePage({
         <Card>
           <CardBody>
             <details>
-              <summary className="font-medium text-red-700 cursor-pointer text-sm">
-                Déclarer une sortie pour ce salarié
+              <summary className="cursor-pointer text-xs font-normal text-gray-500">
+                Sortie de ce salarié
               </summary>
               <div className="mt-3 max-w-md">
                 <SortieSalarieForm
@@ -129,8 +129,8 @@ export default async function SaisieSalariePage({
         <Card>
           <CardBody>
             <details>
-              <summary className="font-medium text-amber-800 cursor-pointer text-sm">
-                Déclarer un arrêt maladie
+              <summary className="cursor-pointer text-xs font-normal text-gray-500">
+                Arrêt maladie
               </summary>
               <div className="mt-3 max-w-md">
                 <ArretMaladieClientForm

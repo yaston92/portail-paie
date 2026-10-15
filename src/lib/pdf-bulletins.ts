@@ -143,17 +143,24 @@ export async function extraireTextesPages(pdf: Buffer): Promise<string[]> {
     } as Parameters<typeof pdfjs.getDocument>[0]);
     try {
       const doc = await loadingTask.promise;
-      const textes: string[] = [];
-      for (let i = 1; i <= doc.numPages; i++) {
-        try {
-          const page = await doc.getPage(i);
-          const contenu = await page.getTextContent({
-            includeMarkedContent: false,
-          });
-          textes.push(textePageDepuisItems(contenu.items));
-        } catch {
-          textes.push("");
-        }
+      const textes = new Array<string>(doc.numPages).fill("");
+      const lot = 4;
+      for (let debut = 1; debut <= doc.numPages; debut += lot) {
+        const indices: number[] = [];
+        for (let i = debut; i < debut + lot && i <= doc.numPages; i++) indices.push(i);
+        await Promise.all(
+          indices.map(async (i) => {
+            try {
+              const page = await doc.getPage(i);
+              const contenu = await page.getTextContent({
+                includeMarkedContent: false,
+              });
+              textes[i - 1] = textePageDepuisItems(contenu.items);
+            } catch {
+              textes[i - 1] = "";
+            }
+          })
+        );
       }
       return textes;
     } catch (e) {
@@ -450,6 +457,29 @@ function finaliserSegment(
     cpPrisN: cp.pris_n,
     texteApercu: texteComplet.slice(0, 500),
   };
+}
+
+/** Nombre de pages réel, même si le texte n'est pas lisible. */
+export async function compterPagesPdf(pdf: Buffer): Promise<number> {
+  const doc = await PDFDocument.load(normaliserPdf(pdf), { ignoreEncryption: true });
+  return Math.max(doc.getPageCount(), 1);
+}
+
+/** Une page = un bulletin, quand aucun texte n'a pu être lu. */
+export function segmentsUnePageChacun(nombre: number): SegmentDetecte[] {
+  return Array.from({ length: nombre }, (_, i) => ({
+    pageDebut: i + 1,
+    pageFin: i + 1,
+    salarieId: null,
+    cpAcquis: null,
+    cpPris: null,
+    cpRestant: null,
+    cpAcquisN1: null,
+    cpAcquisN: null,
+    cpPrisN1: null,
+    cpPrisN: null,
+    texteApercu: "",
+  }));
 }
 
 /** Extrait une plage de pages du PDF global dans un nouveau PDF. */

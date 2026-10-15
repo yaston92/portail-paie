@@ -22,7 +22,7 @@ export default async function DossiersPage() {
   const supabase = await createClient();
   const estAdmin = peutAdminCabinet(profile, cabinet);
 
-  const [{ data: dossiers }, { data: membres }] = await Promise.all([
+  const [{ data: dossiers }, { data: membres }, { data: liens }] = await Promise.all([
     supabase
       .from("dossiers")
       .select("*")
@@ -32,6 +32,10 @@ export default async function DossiersPage() {
       .from("cabinet_membres")
       .select("profile:profiles (id, nom, prenom)")
       .eq("cabinet_id", cabinet.id),
+    supabase
+      .from("dossier_collaborateurs")
+      .select("dossier_id, profile_id, dossiers!inner(cabinet_id)")
+      .eq("dossiers.cabinet_id", cabinet.id),
   ]);
 
   const collabParId = new Map<string, string>();
@@ -42,15 +46,6 @@ export default async function DossiersPage() {
   }
 
   const liste = (dossiers ?? []) as Dossier[];
-  const { data: liens } = liste.length
-    ? await supabase
-        .from("dossier_collaborateurs")
-        .select("dossier_id, profile_id")
-        .in(
-          "dossier_id",
-          liste.map((d) => d.id)
-        )
-    : { data: [] as { dossier_id: string; profile_id: string }[] };
   const nomsParDossier = new Map<string, string[]>();
   for (const lien of (liens ?? []) as { dossier_id: string; profile_id: string }[]) {
     const nom = collabParId.get(lien.profile_id);

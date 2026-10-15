@@ -34,7 +34,7 @@ export default async function ClientBulletinsMoisPage({
     <div className="space-y-6">
       <PageHeader
         titre={moisLabel(mois)}
-        sousTitre="Téléchargez les bulletins à l'unité ou l'archive ZIP du mois."
+        sousTitre="Chaque salarié a son bulletin. Le PDF complet regroupe toutes les pages."
         actions={
           <Link
             href="/client/bulletins"
@@ -54,12 +54,20 @@ export default async function ClientBulletinsMoisPage({
                 {bulletins.length} bulletin
                 {bulletins.length > 1 ? "s" : ""}
               </h2>
-              <a
-                href={`/api/bulletins/zip?dossier=${profile.dossier_id}&mois=${mois}`}
-                className="text-sm text-blue-700 hover:underline"
-              >
-                Tout télécharger (ZIP)
-              </a>
+              <span className="flex flex-wrap gap-4">
+                <a
+                  href={`/api/bulletins/complet?dossier=${profile.dossier_id}&mois=${mois}`}
+                  className="text-sm text-blue-700 hover:underline"
+                >
+                  PDF complet
+                </a>
+                <a
+                  href={`/api/bulletins/zip?dossier=${profile.dossier_id}&mois=${mois}`}
+                  className="text-sm text-blue-700 hover:underline"
+                >
+                  Tout télécharger (ZIP)
+                </a>
+              </span>
             </div>
             <ul className="divide-y divide-gray-100 text-sm">
               {bulletins.map((b) => (

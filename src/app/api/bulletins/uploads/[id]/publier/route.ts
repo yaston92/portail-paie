@@ -86,9 +86,9 @@ export async function POST(
   const source = await telechargerFichier("bulletins", upload.chemin);
   const salariesNotifiables: string[] = [];
 
-  for (const segment of segments) {
+  async function publierSegment(segment: BulletinSegment) {
     const salarie = salarieParId.get(segment.salarie_id!);
-    if (!salarie) continue;
+    if (!salarie) return;
 
     const pdf = await extrairePages(source, segment.page_debut, segment.page_fin);
     const nomFichier = nomFichierBulletin(
@@ -158,6 +158,11 @@ export async function POST(
     if (salarie.profile_id && !salarie.opposition_bulletin) {
       salariesNotifiables.push(salarie.profile_id);
     }
+  }
+
+  const lot = 4;
+  for (let i = 0; i < segments.length; i += lot) {
+    await Promise.all(segments.slice(i, i + lot).map((segment) => publierSegment(segment)));
   }
 
   await admin

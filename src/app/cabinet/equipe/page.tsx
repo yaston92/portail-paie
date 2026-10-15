@@ -23,26 +23,23 @@ export default async function EquipePage() {
   }
 
   const supabase = await createClient();
-  const [{ data: membresRows }, { data: dossiers }] = await Promise.all([
-    supabase
-      .from("cabinet_membres")
-      .select(
-        "role_membre, profile:profiles (id, nom, prenom, email, role, created_at)"
-      )
-      .eq("cabinet_id", cabinet.id),
-    supabase
-      .from("dossiers")
-      .select("id, collaborateur_id")
-      .eq("cabinet_id", cabinet.id),
-  ]);
-
-  const idsDossiers = (dossiers ?? []).map((d) => d.id as string);
-  const { data: liens } = idsDossiers.length
-    ? await supabase
+  const [{ data: membresRows }, { data: dossiers }, { data: liens }] =
+    await Promise.all([
+      supabase
+        .from("cabinet_membres")
+        .select(
+          "role_membre, profile:profiles (id, nom, prenom, email, role, created_at)"
+        )
+        .eq("cabinet_id", cabinet.id),
+      supabase
+        .from("dossiers")
+        .select("id, collaborateur_id")
+        .eq("cabinet_id", cabinet.id),
+      supabase
         .from("dossier_collaborateurs")
-        .select("dossier_id, profile_id")
-        .in("dossier_id", idsDossiers)
-    : { data: [] as { dossier_id: string; profile_id: string }[] };
+        .select("dossier_id, profile_id, dossiers!inner(cabinet_id)")
+        .eq("dossiers.cabinet_id", cabinet.id),
+    ]);
   const dossiersParCollab = new Map<string, Set<string>>();
   function ajouter(profileId: string | null, dossierId: string) {
     if (!profileId) return;

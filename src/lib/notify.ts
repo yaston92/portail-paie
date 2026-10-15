@@ -107,6 +107,8 @@ export async function notifier({ userIds, titre, corps, lien, email = true }: No
     }))
   );
 
+  await envoyerPush(userIds, titre, corps, lien);
+
   if (email) {
     const { data: profiles } = await admin
       .from("profiles")
@@ -122,5 +124,41 @@ export async function notifier({ userIds, titre, corps, lien, email = true }: No
         html: gabaritEmail(titre, corps, lien),
       });
     }
+  }
+}
+
+/** Bannière sur le téléphone, via le service Expo. N'interrompt pas l'envoi si le jeton manque. */
+async function envoyerPush(
+  userIds: string[],
+  titre: string,
+  corps: string,
+  lien?: string
+) {
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin
+      .from("push_tokens")
+      .select("token")
+      .in("user_id", userIds);
+    if (error || !data?.length) return;
+    const messages = data.map((row) => ({
+      to: row.token as string,
+      title: titre,
+      body: corps,
+      data: { lien: lien ?? null },
+      sound: "default",
+    }));
+    for (let i = 0; i < messages.length; i += 100) {
+      await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(messages.slice(i, i + 100)),
+      });
+    }
+  } catch (e) {
+    console.error("[push]", e);
   }
 }
