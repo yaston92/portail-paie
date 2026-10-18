@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
+import { getCabinetActif } from "@/lib/cabinet";
+import { aLeDroit } from "@/lib/droits";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import { labelMotifSortie } from "@/lib/sortie";
@@ -34,7 +36,9 @@ export default async function SalarieDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole(["admin_cabinet", "collaborateur"]);
+  const profile = await requireRole(["admin_cabinet", "collaborateur"]);
+  const cabinet = await getCabinetActif();
+  const peutSalaries = aLeDroit(profile, cabinet, "salaries");
   const { id } = await params;
   const supabase = await createClient();
 
@@ -132,7 +136,13 @@ export default async function SalarieDetailPage({
                 NIR actuel : <NirReveal salarieId={id} />
               </span>
             </p>
-            <ModifierSalarieForm salarie={s} />
+            {peutSalaries ? (
+              <ModifierSalarieForm salarie={s} />
+            ) : (
+              <p className="text-sm text-gray-500">
+                Consultation seule : la modification de la fiche n&apos;est pas autorisée.
+              </p>
+            )}
           </CardBody>
         </Card>
 
@@ -144,7 +154,7 @@ export default async function SalarieDetailPage({
                 <Badge variant="green">Compte actif</Badge>{" "}
                 <span className="ml-1">{compte.email}</span>
               </p>
-            ) : (
+            ) : peutSalaries ? (
               <details>
                 <summary className="text-sm text-blue-700 cursor-pointer">
                   Inviter le salarié sur son espace
@@ -160,7 +170,7 @@ export default async function SalarieDetailPage({
                   />
                 </div>
               </details>
-            )}
+            ) : null}
 
             <h2 className="font-semibold mb-3 mt-6">Solde de congés payés</h2>
             {cp && (
@@ -169,6 +179,7 @@ export default async function SalarieDetailPage({
                 mis à jour le {formatDate(cp.updated_at.slice(0, 10))}
               </p>
             )}
+            {peutSalaries && (
             <SoldeCpForm
               salarieId={id}
               dossierId={s.dossier_id}
@@ -180,6 +191,7 @@ export default async function SalarieDetailPage({
               prisN1={cp?.pris_n1 ?? null}
               prisN={cp?.pris_n ?? null}
             />
+            )}
           </CardBody>
         </Card>
       </div>
@@ -195,11 +207,11 @@ export default async function SalarieDetailPage({
 
       <Card>
         <CardBody>
-          <DocumentsSalarie salarieId={id} documents={docs} peutDeposer />
+          <DocumentsSalarie salarieId={id} documents={docs} peutDeposer={peutSalaries} />
         </CardBody>
       </Card>
 
-      {s.statut === "actif" && (
+      {s.statut === "actif" && peutSalaries && (
         <Card>
           <CardBody>
             <details>
@@ -214,6 +226,7 @@ export default async function SalarieDetailPage({
         </Card>
       )}
 
+      {peutSalaries && (
       <Card>
         <CardBody>
           <h2 className="font-semibold mb-3 text-red-800">Zone dangereuse</h2>
@@ -224,6 +237,7 @@ export default async function SalarieDetailPage({
           />
         </CardBody>
       </Card>
+      )}
     </div>
   );
 }

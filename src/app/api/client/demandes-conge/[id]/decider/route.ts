@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getApiProfile, cabinetPeutAccederDossier } from "@/lib/auth";
+import { refuserSansDroit } from "@/lib/droits";
 import { journaliser } from "@/lib/audit";
 import {
   joursOuvres,
@@ -28,6 +29,8 @@ export async function POST(
   if (!profile) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
+  const refus = await refuserSansDroit(profile, "absences");
+  if (refus) return refus;
 
   const body = schema.safeParse(await request.json());
   if (!body.success) {

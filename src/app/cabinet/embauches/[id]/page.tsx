@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
+import { getCabinetActif } from "@/lib/cabinet";
+import { aLeDroit } from "@/lib/droits";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import { texteDureeHebdo, texteSalaire } from "@/lib/embauche-affichage";
@@ -9,14 +11,22 @@ import { DocumentsSalarie } from "@/components/documents-salarie";
 import { LeverRappelEmbauche } from "@/components/lever-rappel-embauche";
 import { PiecesEmbauche } from "@/components/pieces-embauche";
 import { Alert, Badge, Card, CardBody, PageHeader } from "@/components/ui";
-import type { Dossier, Embauche, SalarieDocument } from "@/lib/types";
+import {
+  contratATerme,
+  libelleContrat,
+  type Dossier,
+  type Embauche,
+  type SalarieDocument,
+} from "@/lib/types";
 
 export default async function CabinetEmbaucheDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole(["directeur", "admin_cabinet", "collaborateur"]);
+  const profile = await requireRole(["directeur", "admin_cabinet", "collaborateur"]);
+  const cabinet = await getCabinetActif();
+  const peutEmbauches = aLeDroit(profile, cabinet, "embauches");
   const { id } = await params;
   const supabase = await createClient();
 
@@ -64,9 +74,11 @@ export default async function CabinetEmbaucheDetailPage({
             rappelé pour un accompagnement. Les champs vides sont ceux qu&apos;il n&apos;a
             pas pu remplir.
           </p>
+          {peutEmbauches && (
           <div className="mt-3">
             <LeverRappelEmbauche embaucheId={id} />
           </div>
+          )}
         </Alert>
       )}
       {e.statut === "retourne" && (
@@ -96,8 +108,8 @@ export default async function CabinetEmbaucheDetailPage({
             <dt className="text-gray-500">Début de contrat</dt>
             <dd>{formatDate(e.date_debut)}</dd>
             <dt className="text-gray-500">Contrat</dt>
-            <dd>{e.type_contrat ? e.type_contrat.toUpperCase() : "-"}</dd>
-            {e.type_contrat === "cdd" && e.cdd_duree && (
+            <dd>{libelleContrat(e.type_contrat)}</dd>
+            {contratATerme(e.type_contrat) && e.cdd_duree && (
               <>
                 <dt className="text-gray-500">Date de fin</dt>
                 <dd>
@@ -173,7 +185,7 @@ export default async function CabinetEmbaucheDetailPage({
         </Card>
       )}
 
-      {e.statut === "envoye" && (
+      {e.statut === "envoye" && peutEmbauches && (
         <Card>
           <CardBody>
             <h2 className="font-semibold mb-3">Décision</h2>

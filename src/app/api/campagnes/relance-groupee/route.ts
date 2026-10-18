@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getApiProfile } from "@/lib/auth";
+import { refuserSansDroit } from "@/lib/droits";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { destinatairesClientsParDossier, notifier } from "@/lib/notify";
@@ -18,6 +19,8 @@ export async function POST(request: Request) {
   if (!profile) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
+  const refus = await refuserSansDroit(profile, "variables");
+  if (refus) return refus;
 
   const body = schema.safeParse(await request.json());
   if (!body.success) {

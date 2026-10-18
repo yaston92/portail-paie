@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
+import { getCabinetActif } from "@/lib/cabinet";
+import { aLeDroit } from "@/lib/droits";
 import { createClient } from "@/lib/supabase/server";
 import { getAccesClientDossier } from "@/lib/acces-client";
 import { estPresentSurMois, formatDate, moisCourant, moisLabel } from "@/lib/format";
@@ -22,7 +24,7 @@ import {
   Td,
   Th,
 } from "@/components/ui";
-import type { Campagne, Dossier, Profile, Salarie } from "@/lib/types";
+import { libelleContrat, type Campagne, type Dossier, type Profile, type Salarie } from "@/lib/types";
 
 export default async function DossierDetailPage({
   params,
@@ -32,6 +34,9 @@ export default async function DossierDetailPage({
   searchParams: Promise<{ cree?: string }>;
 }) {
   const profile = await requireRole(["admin_cabinet", "collaborateur"]);
+  const cabinet = await getCabinetActif();
+  const peutSalaries = aLeDroit(profile, cabinet, "salaries");
+  const peutVariables = aLeDroit(profile, cabinet, "variables");
   const { id } = await params;
   const { cree } = await searchParams;
   const supabase = await createClient();
@@ -142,11 +147,17 @@ export default async function DossierDetailPage({
             <p className="text-sm text-gray-500 mb-3">
               Ouvrir uniquement pour ce dossier. Le client sera notifié.
             </p>
-            <OuvrirCampagnes
-              mois={mois}
-              dossierIds={[id]}
-              libelle={`Ouvrir la campagne pour ${d.sigle}`}
-            />
+            {peutVariables ? (
+              <OuvrirCampagnes
+                mois={mois}
+                dossierIds={[id]}
+                libelle={`Ouvrir la campagne pour ${d.sigle}`}
+              />
+            ) : (
+              <p className="text-sm text-gray-500">
+                Ouverture non autorisée pour votre compte.
+              </p>
+            )}
           </CardBody>
         </Card>
       )}
@@ -285,6 +296,8 @@ export default async function DossierDetailPage({
               Salariés actifs ({actifs.length})
             </h2>
             <div className="flex gap-4">
+              {peutSalaries && (
+                <>
               <details className="relative" open>
                 <summary className="text-sm text-blue-700 cursor-pointer font-medium">
                   Ajouter un salarié
@@ -301,6 +314,8 @@ export default async function DossierDetailPage({
                   <ImportExcelForm dossierId={id} />
                 </div>
               </details>
+                </>
+              )}
             </div>
           </div>
           {actifs.length === 0 ? (
@@ -328,7 +343,7 @@ export default async function DossierDetailPage({
                       </Link>
                     </Td>
                     <Td>{s.matricule ?? "-"}</Td>
-                    <Td>{s.type_contrat?.toUpperCase() ?? "-"}</Td>
+                    <Td>{libelleContrat(s.type_contrat)}</Td>
                     <Td>{formatDate(s.date_entree)}</Td>
                     <Td>
                       {s.date_sortie ? (

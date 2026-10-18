@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getApiProfile, cabinetPeutAccederDossier } from "@/lib/auth";
+import { refuserSansDroit } from "@/lib/droits";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   getAccesSalarie,
@@ -62,6 +63,11 @@ export async function POST(
   const auth = await autoriserAccesSalarie(id);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+  const acteur = await getApiProfile();
+  if (acteur) {
+    const refus = await refuserSansDroit(acteur, "salaries");
+    if (refus) return refus;
   }
 
   let body: { email?: string; action?: string } = {};

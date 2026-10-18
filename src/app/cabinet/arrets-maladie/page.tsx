@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
+import { aLeDroit } from "@/lib/droits";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateCourte } from "@/lib/format";
 import { ReclamerJustificatifArret } from "@/components/reclamer-justificatif-arret";
@@ -18,7 +19,13 @@ type ArretLigne = ArretMaladie & {
   dossiers?: { sigle: string } | null;
 };
 
-function Tableau({ lignes }: { lignes: ArretLigne[] }) {
+function Tableau({
+  lignes,
+  peutAgir,
+}: {
+  lignes: ArretLigne[];
+  peutAgir: boolean;
+}) {
   return (
     <TableWrap>
       <thead className="bg-gray-50">
@@ -71,15 +78,19 @@ function Tableau({ lignes }: { lignes: ArretLigne[] }) {
                   >
                     Télécharger
                   </a>
-                ) : (
+                ) : peutAgir ? (
                   <ReclamerJustificatifArret arretId={a.id} />
+                ) : (
+                  <span className="text-sm text-gray-400">Manquant</span>
                 )}
               </Td>
               <Td className="align-middle whitespace-nowrap">
                 {a.traite_at ? (
                   <span className="text-sm text-gray-500">Traité</span>
-                ) : (
+                ) : peutAgir ? (
                   <TraiterArretButton arretId={a.id} />
+                ) : (
+                  <span className="text-sm text-gray-400">À traiter</span>
                 )}
               </Td>
             </tr>
@@ -92,7 +103,7 @@ function Tableau({ lignes }: { lignes: ArretLigne[] }) {
 
 /** Arrêts maladie transmis par les salariés ou clients (cabinet). */
 export default async function CabinetArretsMaladiePage() {
-  await requireRole(["admin_cabinet", "collaborateur"]);
+  const profile = await requireRole(["admin_cabinet", "collaborateur"]);
   const { getCabinetActif } = await import("@/lib/cabinet");
   const cabinet = await getCabinetActif();
   if (!cabinet) {
@@ -108,6 +119,7 @@ export default async function CabinetArretsMaladiePage() {
     .order("created_at", { ascending: false })
     .limit(200);
 
+  const peutAgir = aLeDroit(profile, cabinet, "absences");
   const liste = (data ?? []) as ArretLigne[];
   const enCours = liste.filter((a) => !a.traite_at);
   const historique = liste.filter((a) => !!a.traite_at);
@@ -125,13 +137,13 @@ export default async function CabinetArretsMaladiePage() {
           {enCours.length > 0 && (
             <section>
               <h2 className="font-semibold mb-3">En cours</h2>
-              <Tableau lignes={enCours} />
+              <Tableau lignes={enCours} peutAgir={peutAgir} />
             </section>
           )}
           {historique.length > 0 && (
             <section>
               <h2 className="font-semibold mb-3">Historique</h2>
-              <Tableau lignes={historique} />
+              <Tableau lignes={historique} peutAgir={peutAgir} />
             </section>
           )}
         </>

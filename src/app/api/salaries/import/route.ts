@@ -5,19 +5,23 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { chiffrer } from "@/lib/crypto";
 import { journaliser } from "@/lib/audit";
 import { nirValide } from "@/lib/format";
+import { refuserSansDroit } from "@/lib/droits";
+import { estContrat } from "@/lib/types";
 
 export const runtime = "nodejs";
 
 /**
  * Import Excel d'initialisation des salariés d'un dossier.
  * Colonnes attendues (ligne 1 = en-têtes) :
- * Matricule | Nom | Prénom | Email | NIR | Date d'entrée | Contrat (CDI/CDD) | Durée hebdo | Poste
+ * Matricule | Nom | Prénom | Email | NIR | Date d'entrée | Contrat (CDI/CDD/apprentissage) | Durée hebdo | Poste
  */
 export async function POST(request: Request) {
   const profile = await getApiProfile(["admin_cabinet", "collaborateur"]);
   if (!profile) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
+  const refus = await refuserSansDroit(profile, "salaries");
+  if (refus) return refus;
 
   const form = await request.formData();
   const dossierId = form.get("dossier_id") as string | null;
@@ -71,9 +75,15 @@ export async function POST(request: Request) {
       erreurs.push(`Ligne ${i} (${nom} ${prenom}) : NIR invalide.`);
       continue;
     }
-    const contratBrut = celluleTexte(row, 7).toLowerCase();
-    const contrat =
-      contratBrut === "cdi" ? "cdi" : contratBrut === "cdd" ? "cdd" : null;
+    const contratBrut = celluleTexte(row, 7)
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    const contrat = estContrat(contratBrut)
+      ? contratBrut
+      : contratBrut.includes("apprentissage")
+        ? "apprentissage"
+        : null;
     const dureeHebdo = parseFloat(celluleTexte(row, 8).replace(",", "."));
     const dateEntree = celluleTexte(row, 6);
 

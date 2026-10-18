@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
+import { getCabinetActif } from "@/lib/cabinet";
+import { aLeDroit } from "@/lib/droits";
 import { createClient } from "@/lib/supabase/server";
 import { etatCampagne, saisieComplete, totauxAbsences } from "@/lib/campagne";
 import { chargerNotes } from "@/lib/notes";
@@ -29,7 +31,10 @@ export default async function CabinetCampagneDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole(["admin_cabinet", "collaborateur"]);
+  const profile = await requireRole(["admin_cabinet", "collaborateur"]);
+  const cabinet = await getCabinetActif();
+  const peutVariables = aLeDroit(profile, cabinet, "variables");
+  const peutBulletins = aLeDroit(profile, cabinet, "bulletins");
   const { id } = await params;
   const supabase = await createClient();
 
@@ -76,11 +81,11 @@ export default async function CabinetCampagneDetailPage({
         actions={
           <div className="flex items-center gap-3">
             <CampagneStatutBadge campagne={campagne} />
-            {campagne.statut !== "ouverte" && !campagneTraitee(campagne) && (
+            {peutVariables && campagne.statut !== "ouverte" && !campagneTraitee(campagne) && (
               <TraiterCampagneButton campagneId={id} />
             )}
-            {campagne.statut === "ouverte" && <RelancerCampagne campagneId={id} />}
-            {campagne.statut !== "ouverte" && <RouvrirCampagne campagneId={id} />}
+            {peutVariables && campagne.statut === "ouverte" && <RelancerCampagne campagneId={id} />}
+            {peutVariables && campagne.statut !== "ouverte" && <RouvrirCampagne campagneId={id} />}
             {campagne.recap_chemin && (
               <a
                 href={`/api/campagnes/${id}/recap`}
@@ -235,6 +240,7 @@ export default async function CabinetCampagneDetailPage({
                 </Link>
               </p>
             )}
+            {peutBulletins && (
             <BulletinsUploadForm
               dossiers={[
                 {
@@ -247,6 +253,7 @@ export default async function CabinetCampagneDetailPage({
               defaultMois={campagne.mois}
               hideDossierSelect
             />
+            )}
           </CardBody>
         </Card>
       )}

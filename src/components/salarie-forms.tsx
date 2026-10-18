@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Alert, Button, Input, Label, Select } from "@/components/ui";
 import { MOTIFS_SORTIE } from "@/lib/sortie";
+import { CONTRATS, contratATerme, type ContratType } from "@/lib/types";
 import { toastError, toastSuccess } from "@/lib/toast";
 
 // ---------- Ajout manuel d'un salarié (cabinet) ----------
@@ -91,11 +92,14 @@ export function AjoutSalarieForm({ dossierId }: { dossierId: string }) {
             onChange={(e) => setTypeContrat(e.target.value)}
           >
             <option value="">-</option>
-            <option value="cdi">CDI</option>
-            <option value="cdd">CDD</option>
+            {CONTRATS.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
           </Select>
         </div>
-        {typeContrat === "cdd" && (
+        {contratATerme(typeContrat) && (
           <div>
             <Label>Date de fin</Label>
             <Input name="cdd_duree" type="date" />
@@ -126,7 +130,7 @@ export function ModifierSalarieForm({ salarie }: { salarie: {
   matricule: string | null;
   email: string | null;
   date_entree: string | null;
-  type_contrat: "cdi" | "cdd" | null;
+  type_contrat: ContratType | null;
   cdd_duree: string | null;
   duree_hebdo: number | null;
   poste: string | null;
@@ -207,11 +211,14 @@ export function ModifierSalarieForm({ salarie }: { salarie: {
             onChange={(e) => setTypeContrat(e.target.value)}
           >
             <option value="">-</option>
-            <option value="cdi">CDI</option>
-            <option value="cdd">CDD</option>
+            {CONTRATS.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
           </Select>
         </div>
-        {typeContrat === "cdd" && (
+        {contratATerme(typeContrat) && (
           <div>
             <Label>Date de fin</Label>
             <Input
@@ -297,7 +304,7 @@ export function ImportExcelForm({ dossierId }: { dossierId: string }) {
     <form onSubmit={handleSubmit} className="space-y-3">
       <p className="text-xs text-gray-500">
         Format .xlsx : colonnes : Matricule, Nom, Prénom, Email, NIR, Date
-        d&apos;entrée (AAAA-MM-JJ), Contrat (CDI/CDD), Durée hebdo, Poste.
+        d&apos;entrée (AAAA-MM-JJ), Contrat (CDI, CDD ou apprentissage), Durée hebdo, Poste.
         Ligne 1 = en-têtes.
       </p>
       {erreur && <Alert variant="error">{erreur}</Alert>}

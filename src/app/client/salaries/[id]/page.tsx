@@ -13,7 +13,13 @@ import { NavigationSalaries } from "@/components/navigation-salaries";
 import { DocumentsSalarie } from "@/components/documents-salarie";
 import { labelMotifSortie } from "@/lib/sortie";
 import { Badge, Card, CardBody, PageHeader } from "@/components/ui";
-import type { ArretMaladie, Salarie, SalarieDocument } from "@/lib/types";
+import {
+  contratATerme,
+  libelleContrat,
+  type ArretMaladie,
+  type Salarie,
+  type SalarieDocument,
+} from "@/lib/types";
 
 export default async function ClientSalarieDetailPage({
   params,
@@ -81,8 +87,8 @@ export default async function ClientSalarieDetailPage({
           sousTitre={[
             s.poste ?? null,
             s.type_contrat
-              ? `${s.type_contrat.toUpperCase()}${
-                  s.type_contrat === "cdd" && s.cdd_duree
+              ? `${libelleContrat(s.type_contrat)}${
+                  contratATerme(s.type_contrat) && s.cdd_duree
                     ? ` (${s.cdd_duree})`
                     : ""
                 }`

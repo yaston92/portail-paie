@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
+import { aLeDroit } from "@/lib/droits";
 import { createClient } from "@/lib/supabase/server";
 import { salariesAttendus } from "@/lib/campagne";
 import { moisLabel } from "@/lib/format";
@@ -13,7 +14,10 @@ export default async function ControleUploadPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole(["admin_cabinet", "collaborateur"]);
+  const profile = await requireRole(["admin_cabinet", "collaborateur"]);
+  const { getCabinetActif } = await import("@/lib/cabinet");
+  const cabinet = await getCabinetActif();
+  const peutBulletins = aLeDroit(profile, cabinet, "bulletins");
   const { id } = await params;
   const supabase = await createClient();
 
@@ -70,6 +74,7 @@ export default async function ControleUploadPage({
           matricule: s.matricule,
         }))}
         publie={upload.statut === "publie"}
+        peutModifier={peutBulletins}
         nbPages={upload.nb_pages ?? Math.max(1, ...listeSegments.map((s) => s.page_fin))}
       />
     </div>

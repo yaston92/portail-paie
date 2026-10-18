@@ -5,6 +5,7 @@ import {
   requireCabinetContext,
 } from "@/lib/cabinet";
 import { labelRole, roleEffectif } from "@/lib/roles-cabinet";
+import { droitsComplets, lireDroits } from "@/lib/droits";
 import { InviterUtilisateur } from "@/components/inviter-utilisateur";
 import {
   Badge,
@@ -23,14 +24,23 @@ export default async function EquipePage() {
   }
 
   const supabase = await createClient();
-  const [{ data: membresRows }, { data: dossiers }, { data: liens }] =
-    await Promise.all([
-      supabase
-        .from("cabinet_membres")
-        .select(
-          "role_membre, profile:profiles (id, nom, prenom, email, role, created_at)"
-        )
-        .eq("cabinet_id", cabinet.id),
+  let membresQuery = await supabase
+    .from("cabinet_membres")
+    .select(
+      "role_membre, droits, profile:profiles (id, nom, prenom, email, role, created_at)"
+    )
+    .eq("cabinet_id", cabinet.id);
+  if (membresQuery.error) {
+    const sansDroits = await supabase
+      .from("cabinet_membres")
+      .select(
+        "role_membre, profile:profiles (id, nom, prenom, email, role, created_at)"
+      )
+      .eq("cabinet_id", cabinet.id);
+    membresQuery = sansDroits as typeof membresQuery;
+  }
+  const membresRows = membresQuery.data;
+  const [{ data: dossiers }, { data: liens }] = await Promise.all([
       supabase
         .from("dossiers")
         .select("id, collaborateur_id")
@@ -60,15 +70,21 @@ export default async function EquipePage() {
 
   type Ligne = {
     role_membre: string;
+    droits: unknown;
     profile: Profile | null;
   };
 
   const lignes: Ligne[] = (membresRows ?? [])
     .map((row) => {
-      const p = (row as unknown as { profile?: Profile | Profile[] | null })
-        .profile;
+      const brut = row as unknown as {
+        role_membre: string;
+        droits?: unknown;
+        profile?: Profile | Profile[] | null;
+      };
+      const p = brut.profile;
       return {
-        role_membre: (row as unknown as { role_membre: string }).role_membre,
+        role_membre: brut.role_membre,
+        droits: brut.droits,
         profile: Array.isArray(p) ? p[0] ?? null : p ?? null,
       };
     })
@@ -91,9 +107,11 @@ export default async function EquipePage() {
         <EmptyState message="Aucun membre pour le moment." />
       ) : (
         <div className="space-y-3">
-          {lignes.map(({ profile: m, role_membre }) => {
+          {lignes.map(({ profile: m, role_membre, droits }) => {
             const role = roleEffectif(m!.role, role_membre);
             const nb = nbDossiersParCollab.get(m!.id) ?? 0;
+            const restreint =
+              role === "collaborateur" && !droitsComplets(lireDroits(droits));
             return (
               <Link
                 key={m!.id}
@@ -112,6 +130,7 @@ export default async function EquipePage() {
                         </p>
                         <p className="text-xs text-gray-400 mt-2">
                           {nb} dossier{nb > 1 ? "s" : ""}
+                          {restreint ? " · droits limités" : ""}
                         </p>
                       </div>
                       <Badge

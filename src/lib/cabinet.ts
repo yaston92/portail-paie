@@ -3,6 +3,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getProfile, requireRole } from "@/lib/auth";
+import { DROITS_TOUS, lireDroits, type DroitsCollaborateur } from "@/lib/droits";
 import type {
   Cabinet,
   CabinetRoleMembre,
@@ -14,7 +15,10 @@ import { ROLES_CABINET } from "@/lib/types";
 export const COOKIE_CABINET_ID = "cabinet_id";
 export const HEADER_CABINET_ID = "x-cabinet-id";
 
-export type CabinetAvecRole = Cabinet & { role_membre: CabinetRoleMembre };
+export type CabinetAvecRole = Cabinet & {
+  role_membre: CabinetRoleMembre;
+  droits: DroitsCollaborateur;
+};
 
 /** Cabinets auxquels le profil est membre (non archivés). */
 export const getCabinetsMembre = cache(
@@ -25,19 +29,30 @@ export const getCabinetsMembre = cache(
     if (!profile) return [];
 
     const supabase = await createClient();
-    const { data } = await supabase
+    const selection =
+      "role_membre, droits, cabinet:cabinets (id, nom, archive, created_at)";
+    let { data, error } = await supabase
       .from("cabinet_membres")
-      .select("role_membre, cabinet:cabinets (id, nom, archive, created_at)")
+      .select(selection)
       .eq("profile_id", profile.id);
+    if (error) {
+      const fallback = await supabase
+        .from("cabinet_membres")
+        .select("role_membre, cabinet:cabinets (id, nom, archive, created_at)")
+        .eq("profile_id", profile.id);
+      data = fallback.data as typeof data;
+    }
 
     const out: CabinetAvecRole[] = [];
     for (const row of data ?? []) {
       const c = (row as { cabinet?: Cabinet | Cabinet[] | null }).cabinet;
       const cab = Array.isArray(c) ? c[0] : c;
       if (!cab || cab.archive) continue;
+      const brut = row as { role_membre: CabinetRoleMembre; droits?: unknown };
       out.push({
         ...cab,
-        role_membre: (row as { role_membre: CabinetRoleMembre }).role_membre,
+        role_membre: brut.role_membre,
+        droits: error ? DROITS_TOUS : lireDroits(brut.droits),
       });
     }
     out.sort((a, b) => a.nom.localeCompare(b.nom, "fr"));

@@ -5,6 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { chiffrer } from "@/lib/crypto";
 import { journaliser } from "@/lib/audit";
 import { nirValide } from "@/lib/format";
+import { refuserSansDroit } from "@/lib/droits";
+import { contratATerme, estContrat } from "@/lib/types";
 import { supprimerFichiers } from "@/lib/storage";
 
 const schema = z.object({
@@ -14,7 +16,7 @@ const schema = z.object({
   email: z.string().email().optional().or(z.literal("")),
   nir: z.string().optional().or(z.literal("")),
   date_entree: z.string().optional().or(z.literal("")),
-  type_contrat: z.enum(["cdi", "cdd"]).optional().or(z.literal("")),
+  type_contrat: z.enum(["cdi", "cdd", "apprentissage"]).optional().or(z.literal("")),
   cdd_duree: z.string().optional().or(z.literal("")),
   duree_hebdo: z.preprocess(
     (v) => (v === "" || v === null || v === undefined ? undefined : v),
@@ -33,6 +35,8 @@ export async function PATCH(
   if (!profile) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
+  const refus = await refuserSansDroit(profile, "salaries");
+  if (refus) return refus;
 
   const { id } = await params;
   const body = schema.safeParse(await request.json());
@@ -60,8 +64,7 @@ export async function PATCH(
     );
   }
 
-  const typeContrat =
-    d.type_contrat === "cdi" || d.type_contrat === "cdd" ? d.type_contrat : null;
+  const typeContrat = estContrat(d.type_contrat) ? d.type_contrat : null;
 
   const { error } = await admin
     .from("salaries")
@@ -72,7 +75,7 @@ export async function PATCH(
       email: d.email || null,
       date_entree: d.date_entree || null,
       type_contrat: typeContrat,
-      cdd_duree: typeContrat === "cdd" ? d.cdd_duree || null : null,
+      cdd_duree: contratATerme(typeContrat) ? d.cdd_duree || null : null,
       duree_hebdo: d.duree_hebdo ?? null,
       poste: d.poste || null,
       ...(typeof d.opposition_bulletin === "boolean"
@@ -128,6 +131,8 @@ export async function DELETE(
   if (!profile) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
+  const refus = await refuserSansDroit(profile, "salaries");
+  if (refus) return refus;
 
   const { id } = await params;
   const admin = createAdminClient();

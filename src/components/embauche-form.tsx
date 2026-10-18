@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Alert, Button, Input, Label, Select, Textarea } from "@/components/ui";
 import { toastError, toastSuccess } from "@/lib/toast";
-import type { Embauche } from "@/lib/types";
+import { CONTRATS, contratATerme, type Embauche } from "@/lib/types";
 
 interface Props {
   /** Si fourni : re-soumission d'une embauche retournée (pièces déjà déposées facultatives). */
@@ -184,11 +184,14 @@ export function EmbaucheForm({ embauche, conventionCollective }: Props) {
               onChange={(e) => setTypeContrat(e.target.value)}
             >
               <option value="">- Choisir -</option>
-              <option value="cdi">CDI</option>
-              <option value="cdd">CDD</option>
+              {CONTRATS.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
             </Select>
           </div>
-          {typeContrat === "cdd" && (
+          {contratATerme(typeContrat) && (
             <div>
               <Label>Date de fin{accompagnement ? "" : " *"}</Label>
               <Input

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
+import { aLeDroit } from "@/lib/droits";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatDateTime, moisCourant, moisLabel } from "@/lib/format";
 import {
@@ -25,7 +26,7 @@ export default async function CabinetCampagnesPage({
 }: {
   searchParams: Promise<{ mois?: string; dossier?: string }>;
 }) {
-  await requireRole(["admin_cabinet", "collaborateur"]);
+  const profile = await requireRole(["admin_cabinet", "collaborateur"]);
   const sp = await searchParams;
   const mois = /^\d{4}-\d{2}-01$/.test(sp.mois ?? "") ? sp.mois! : moisCourant();
   const { getCabinetActif } = await import("@/lib/cabinet");
@@ -35,6 +36,7 @@ export default async function CabinetCampagnesPage({
     redirect("/cabinet/cabinets");
   }
   const cabinetId = cabinet!.id;
+  const peutVariables = aLeDroit(profile, cabinet, "variables");
   const supabase = await createClient();
 
   let dossierQuery = supabase
@@ -103,6 +105,7 @@ export default async function CabinetCampagnesPage({
               avant, pour tous les dossiers ou dossier par dossier (bouton
               « Ouvrir »). Les clients seront notifiés par email.
             </p>
+            {peutVariables && (
             <OuvrirCampagnes
               mois={mois}
               dossierIds={
@@ -114,6 +117,7 @@ export default async function CabinetCampagnesPage({
                   : "Ouvrir pour tous les dossiers sans campagne"
               }
             />
+            )}
           </CardBody>
         </Card>
       )}
@@ -156,7 +160,7 @@ export default async function CabinetCampagnesPage({
                 </Td>
                 <Td>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                    {!c && (
+                    {!c && peutVariables && (
                       <OuvrirCampagneIndividuelle
                         mois={mois}
                         dossierId={d.id}
@@ -171,10 +175,10 @@ export default async function CabinetCampagnesPage({
                         Détail
                       </Link>
                     )}
-                    {c?.statut === "ouverte" && (
+                    {c?.statut === "ouverte" && peutVariables && (
                       <RelancerCampagne campagneId={c.id} />
                     )}
-                    {c && c.statut !== "ouverte" && (
+                    {c && c.statut !== "ouverte" && peutVariables && (
                       <RouvrirCampagne campagneId={c.id} libelle="Ouvrir de nouveau" />
                     )}
                   </div>

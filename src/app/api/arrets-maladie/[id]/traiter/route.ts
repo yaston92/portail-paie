@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getApiProfile } from "@/lib/auth";
+import { refuserSansDroit } from "@/lib/droits";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -13,6 +14,8 @@ export async function POST(
   if (!profile) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
+  const refus = await refuserSansDroit(profile, "absences");
+  if (refus) return refus;
   const { id } = await params;
   const admin = createAdminClient();
   const { error } = await admin

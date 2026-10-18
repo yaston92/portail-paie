@@ -12,6 +12,7 @@ import {
   uploaderFichier,
 } from "@/lib/storage";
 import { formatDate } from "@/lib/format";
+import { refuserSansDroit } from "@/lib/droits";
 
 export const runtime = "nodejs";
 
@@ -91,6 +92,10 @@ export async function POST(
   }
   const { id } = await params;
   const estClient = profile.role === "client";
+  if (!estClient) {
+    const refus = await refuserSansDroit(profile, "salaries");
+    if (refus) return refus;
+  }
 
   const supabase = await createClient();
   const { data: salarie } = await supabase

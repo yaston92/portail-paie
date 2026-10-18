@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getApiProfile, cabinetPeutAccederDossier } from "@/lib/auth";
+import { refuserSansDroit } from "@/lib/droits";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { journaliser } from "@/lib/audit";
 import { uploaderFichier } from "@/lib/storage";
@@ -26,6 +27,8 @@ export async function POST(request: Request) {
   if (!profile) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
+  const refus = await refuserSansDroit(profile, "bulletins");
+  if (refus) return refus;
 
   const form = await request.formData();
   const dossierId = (form.get("dossier_id") as string) ?? "";

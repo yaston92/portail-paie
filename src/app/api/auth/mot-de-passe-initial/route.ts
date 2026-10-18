@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { getApiProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { createClient } from "@/lib/supabase/server";
 
-/** Remplace le mot de passe provisoire et lève l'obligation de changement. */
+/**
+ * Remplace le mot de passe provisoire et lève l'obligation de changement.
+ * Passe par le client admin : l'app mobile n'a qu'un jeton Bearer, et
+ * `updateUser` refuse alors avec « Auth session missing ».
+ */
 export async function POST(request: Request) {
   const profile = await getApiProfile();
   if (!profile) {
@@ -27,16 +30,15 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = await createClient();
-  const { error } = await supabase.auth.updateUser({ password });
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.updateUserById(profile.id, { password });
   if (error) {
     return NextResponse.json(
-      { error: error.message || "Impossible d'enregistrer le mot de passe." },
+      { error: "Impossible d'enregistrer le mot de passe." },
       { status: 400 }
     );
   }
 
-  const admin = createAdminClient();
   const { error: flagError } = await admin
     .from("profiles")
     .update({ doit_changer_mot_de_passe: false })

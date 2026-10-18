@@ -5,7 +5,7 @@ import { formatDate } from "@/lib/format";
 import { texteDureeHebdo, texteSalaire } from "@/lib/embauche-affichage";
 import { EmbaucheForm } from "@/components/embauche-form";
 import { Alert, Badge, Card, CardBody, PageHeader } from "@/components/ui";
-import type { Embauche } from "@/lib/types";
+import { contratATerme, libelleContrat, type Embauche } from "@/lib/types";
 
 export default async function ClientEmbaucheDetailPage({
   params,
@@ -82,8 +82,8 @@ export default async function ClientEmbaucheDetailPage({
             <dt className="text-gray-500">Début de contrat</dt>
             <dd>{formatDate(e.date_debut)}</dd>
             <dt className="text-gray-500">Contrat</dt>
-            <dd>{e.type_contrat ? e.type_contrat.toUpperCase() : "-"}</dd>
-            {e.type_contrat === "cdd" && e.cdd_duree && (
+            <dd>{libelleContrat(e.type_contrat)}</dd>
+            {contratATerme(e.type_contrat) && e.cdd_duree && (
               <>
                 <dt className="text-gray-500">Date de fin</dt>
                 <dd>

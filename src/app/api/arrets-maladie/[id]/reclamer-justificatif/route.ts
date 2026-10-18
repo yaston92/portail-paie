@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getApiProfile } from "@/lib/auth";
+import { refuserSansDroit } from "@/lib/droits";
 import { journaliser } from "@/lib/audit";
 import { formatDate } from "@/lib/format";
 import { destinatairesClient, notifier } from "@/lib/notify";
@@ -17,6 +18,8 @@ export async function POST(
   if (!profile) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
+  const refus = await refuserSansDroit(profile, "absences");
+  if (refus) return refus;
 
   const { id } = await params;
   const supabase = await createClient();

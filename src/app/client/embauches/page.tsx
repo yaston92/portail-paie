@@ -12,7 +12,7 @@ import {
   Td,
   Th,
 } from "@/components/ui";
-import type { Embauche } from "@/lib/types";
+import { libelleContrat, type Embauche } from "@/lib/types";
 
 function StatutBadge({ statut }: { statut: Embauche["statut"] }) {
   switch (statut) {
@@ -83,7 +83,7 @@ export default async function ClientEmbauchesPage({
                 </Td>
                 <Td>{e.poste}</Td>
                 <Td>{formatDate(e.date_debut)}</Td>
-                <Td>{e.type_contrat ? e.type_contrat.toUpperCase() : "-"}</Td>
+                <Td>{libelleContrat(e.type_contrat)}</Td>
                 <Td>
                   <StatutBadge statut={e.statut} />
                 </Td>

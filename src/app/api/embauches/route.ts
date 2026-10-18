@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { journaliser } from "@/lib/audit";
 import { destinatairesCabinet, notifier } from "@/lib/notify";
 import { nirValide } from "@/lib/format";
+import { contratATerme, estContrat } from "@/lib/types";
 import {
   contentTypePourExtension,
   extensionFichier,
@@ -98,14 +99,20 @@ export async function POST(request: Request) {
   const recto = fichier("piece_identite_recto");
   const verso = fichier("piece_identite_verso");
   const carteVitale = fichier("carte_vitale");
-  const contratConnu = typeContrat === "cdi" || typeContrat === "cdd";
+  const contratConnu = estContrat(typeContrat);
 
   if (!nom) manquants.push("Nom");
   if (!prenom) manquants.push("Prénom");
   if (!accompagnement) {
     if (!dateDebut) manquants.push("Date de début de contrat");
     if (!contratConnu) manquants.push("Type de contrat");
-    if (typeContrat === "cdd" && !cddDuree) manquants.push("Date de fin du CDD");
+    if (contratATerme(typeContrat) && !cddDuree) {
+      manquants.push(
+        typeContrat === "apprentissage"
+          ? "Date de fin du contrat d'apprentissage"
+          : "Date de fin du CDD"
+      );
+    }
     if (!Number.isFinite(dureeHebdo) || dureeHebdo <= 0)
       manquants.push("Durée hebdomadaire de travail");
     if (!salaireMinimum && (!Number.isFinite(salaire) || salaire <= 0))
@@ -119,13 +126,13 @@ export async function POST(request: Request) {
       manquants.push("Pièce d'identité : verso");
   }
   if (
-    typeContrat === "cdd" &&
+    contratATerme(typeContrat) &&
     cddDuree &&
     dateDebut &&
     /^\d{4}-\d{2}-\d{2}$/.test(cddDuree) &&
     cddDuree < dateDebut
   ) {
-    manquants.push("Date de fin du CDD (doit être ≥ date de début)");
+    manquants.push("Date de fin (doit être ≥ date de début)");
   }
   if (salaireBrut && (!Number.isFinite(salaire) || salaire < 0))
     manquants.push("Salaire invalide");
@@ -190,7 +197,7 @@ export async function POST(request: Request) {
     piece_identite_verso_chemin: versoChemin,
     date_debut: dateDebut || null,
     type_contrat: contratConnu ? typeContrat : null,
-    cdd_duree: typeContrat === "cdd" ? cddDuree || null : null,
+    cdd_duree: contratATerme(typeContrat) ? cddDuree || null : null,
     duree_hebdo: Number.isFinite(dureeHebdo) && dureeHebdo > 0 ? dureeHebdo : null,
     salaire: salaireMinimum || !Number.isFinite(salaire) ? null : salaire,
     salaire_type: salaireMinimum ? null : salaireType,

@@ -20,6 +20,8 @@ interface Props {
   salaries: SalarieOption[];
   publie: boolean;
   nbPages: number;
+  /** False : consultation du découpage, sans correction ni publication. */
+  peutModifier?: boolean;
 }
 
 function couverture(segments: BulletinSegment[], nbPages: number) {
@@ -55,6 +57,7 @@ export function SegmentsControle({
   salaries,
   publie,
   nbPages,
+  peutModifier = true,
 }: Props) {
   const router = useRouter();
   const [segments, setSegments] = useState(initiaux);
@@ -231,6 +234,7 @@ export function SegmentsControle({
   }
 
   const { manquantes, doubles } = couverture(segments, nbPages);
+  const fige = publie || !peutModifier;
 
   function nomSalarie(id: string | null) {
     const s = salaries.find((x) => x.id === id);
@@ -242,13 +246,19 @@ export function SegmentsControle({
       {erreur && <Alert variant="error">{erreur}</Alert>}
       {message && <Alert variant="success">{message}</Alert>}
 
+      {!peutModifier && !publie && (
+        <Alert>
+          Consultation seule : le directeur n&apos;a pas autorisé la publication des bulletins.
+        </Alert>
+      )}
+
       <p className="text-sm text-gray-600">
         {nbPages} page{nbPages > 1 ? "s" : ""} dans le PDF, {segments.length} bulletin
         {segments.length > 1 ? "s" : ""} détecté{segments.length > 1 ? "s" : ""}. Ouvrez
         chaque PDF pour confirmer le découpage, puis corrigez les pages si besoin.
       </p>
 
-      {!publie && (
+      {!fige && (
         <div className="flex flex-wrap items-center gap-3">
           {nonApparies > 0 ? (
             <Badge variant="red">{nonApparies} bulletin(s) sans salarié</Badge>
@@ -284,14 +294,14 @@ export function SegmentsControle({
             <Th>Pris N-1</Th>
             <Th>Pris N</Th>
             <Th>Solde</Th>
-            {!publie && <Th></Th>}
+            {!fige && <Th></Th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
           {segments.map((seg, index) => (
             <tr key={seg.id} className={!seg.salarie_id && !publie ? "bg-red-50" : ""}>
               <Td className="whitespace-nowrap">
-                {publie ? (
+                {fige ? (
                   seg.page_debut === seg.page_fin
                     ? `p. ${seg.page_debut}`
                     : `p. ${seg.page_debut}–${seg.page_fin}`
@@ -370,7 +380,7 @@ export function SegmentsControle({
                 </a>
               </Td>
               <Td className="min-w-56">
-                {publie ? (
+                {fige ? (
                   nomSalarie(seg.salarie_id) ?? "-"
                 ) : (
                   <Select
@@ -399,7 +409,7 @@ export function SegmentsControle({
                 ] as const
               ).map((champ) => (
                 <Td key={champ}>
-                  {publie ? (
+                  {fige ? (
                     (seg[champ] ??
                       (champ === "cp_restant" ? seg.cp_restant : null) ??
                       ":")
@@ -433,7 +443,7 @@ export function SegmentsControle({
                   )}
                 </Td>
               ))}
-              {!publie && (
+              {!fige && (
                 <Td>
                   <button
                     type="button"
@@ -450,7 +460,7 @@ export function SegmentsControle({
         </tbody>
       </TableWrap>
 
-      {!publie && (
+      {!fige && (
         <div className="flex items-center gap-4">
           <Button
             onClick={publier}

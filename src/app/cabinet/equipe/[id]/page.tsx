@@ -6,7 +6,9 @@ import {
   requireCabinetContext,
 } from "@/lib/cabinet";
 import { FormRoleMembre } from "@/components/changer-role-membre";
+import { DroitsCollaborateurForm } from "@/components/droits-collaborateur-form";
 import { labelRole, roleEffectif } from "@/lib/roles-cabinet";
+import { lireDroits } from "@/lib/droits";
 import { Badge, Card, CardBody, PageHeader } from "@/components/ui";
 import type { Profile } from "@/lib/types";
 
@@ -22,16 +24,27 @@ export default async function EquipeMembrePage({
   }
 
   const supabase = await createClient();
-  const [{ data: membreRow }, { data: dossiers }, { data: liens }] =
-    await Promise.all([
-      supabase
-        .from("cabinet_membres")
-        .select(
-          "role_membre, profile:profiles (id, nom, prenom, email, role, telephone)"
-        )
-        .eq("cabinet_id", cabinet.id)
-        .eq("profile_id", id)
-        .maybeSingle(),
+  let membreQuery = await supabase
+    .from("cabinet_membres")
+    .select(
+      "role_membre, droits, profile:profiles (id, nom, prenom, email, role, telephone)"
+    )
+    .eq("cabinet_id", cabinet.id)
+    .eq("profile_id", id)
+    .maybeSingle();
+  if (membreQuery.error) {
+    const sansDroits = await supabase
+      .from("cabinet_membres")
+      .select(
+        "role_membre, profile:profiles (id, nom, prenom, email, role, telephone)"
+      )
+      .eq("cabinet_id", cabinet.id)
+      .eq("profile_id", id)
+      .maybeSingle();
+    membreQuery = sansDroits as typeof membreQuery;
+  }
+  const membreRow = membreQuery.data;
+  const [{ data: dossiers }, { data: liens }] = await Promise.all([
       supabase
         .from("dossiers")
         .select("id")
@@ -51,6 +64,7 @@ export default async function EquipeMembrePage({
   if (!m) notFound();
 
   const roleMembre = (membreRow as { role_membre: string }).role_membre;
+  const droits = lireDroits((membreRow as { droits?: unknown }).droits);
   const role = roleEffectif(m.role, roleMembre);
   const nbDossiers = new Set([
     ...(dossiers ?? []).map((d) => d.id as string),
@@ -102,6 +116,24 @@ export default async function EquipeMembrePage({
           />
         </CardBody>
       </Card>
+
+      {role === "collaborateur" && (
+        <Card>
+          <CardBody>
+            <h2 className="font-semibold mb-1">Droits</h2>
+            <p className="text-sm text-gray-500 mb-4">
+              Un collaborateur voit toujours ses dossiers. Décochez une action
+              pour l&apos;empêcher de la faire.
+            </p>
+            <DroitsCollaborateurForm
+              profileId={m.id}
+              cabinetId={cabinet.id}
+              droits={droits}
+              peutModifier={profile.role === "directeur"}
+            />
+          </CardBody>
+        </Card>
+      )}
     </div>
   );
 }

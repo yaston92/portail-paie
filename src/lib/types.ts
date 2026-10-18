@@ -5,7 +5,26 @@ export type UserRole =
   | "client"
   | "salarie";
 export type CabinetRoleMembre = "admin" | "collaborateur";
-export type ContratType = "cdi" | "cdd";
+export type ContratType = "cdi" | "cdd" | "apprentissage";
+
+export const CONTRATS: { value: ContratType; label: string }[] = [
+  { value: "cdi", label: "CDI" },
+  { value: "cdd", label: "CDD" },
+  { value: "apprentissage", label: "Contrat d'apprentissage" },
+];
+
+export function libelleContrat(type: string | null | undefined): string {
+  return CONTRATS.find((c) => c.value === type)?.label ?? "-";
+}
+
+export function estContrat(type: string | null | undefined): type is ContratType {
+  return type === "cdi" || type === "cdd" || type === "apprentissage";
+}
+
+/** CDD et apprentissage ont une date de fin. */
+export function contratATerme(type: string | null | undefined): boolean {
+  return type === "cdd" || type === "apprentissage";
+}
 export type EmbaucheStatut = "envoye" | "retourne" | "valide";
 export type CampagneStatut =
   | "ouverte"

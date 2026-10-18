@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { cabinetPeutAccederDossier, getApiProfile } from "@/lib/auth";
+import { refuserSansDroit } from "@/lib/droits";
 import { documentSensible, estTypeDocumentSalarie } from "@/lib/documents-salarie";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
@@ -37,6 +38,8 @@ export async function POST(
   if (!profile) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
+  const refus = await refuserSansDroit(profile, "salaries");
+  if (refus) return refus;
   const { id } = await params;
   const salarie = await salarieAccessible(id);
   if (!salarie || !(await cabinetPeutAccederDossier(salarie.dossier_id))) {
@@ -112,6 +115,8 @@ export async function DELETE(
   if (!profile) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
   }
+  const refus = await refuserSansDroit(profile, "salaries");
+  if (refus) return refus;
   const { id } = await params;
   const docId = new URL(request.url).searchParams.get("doc");
   if (!docId) {
