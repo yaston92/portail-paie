@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getApiProfile } from "@/lib/auth";
-import { refuserSansDroit } from "@/lib/droits";
+import { refuserSansDroit } from "@/lib/droits-serveur";
 import { journaliser } from "@/lib/audit";
 import { formatDate } from "@/lib/format";
 import { destinatairesClient, notifier } from "@/lib/notify";

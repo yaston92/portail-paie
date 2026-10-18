@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { chiffrer } from "@/lib/crypto";
 import { journaliser } from "@/lib/audit";
 import { nirValide } from "@/lib/format";
-import { refuserSansDroit } from "@/lib/droits";
+import { refuserSansDroit } from "@/lib/droits-serveur";
 import { contratATerme, estContrat } from "@/lib/types";
 
 const schema = z.object({

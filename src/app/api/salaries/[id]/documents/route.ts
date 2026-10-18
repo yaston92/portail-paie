@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { NextResponse } from "next/server";
 import { cabinetPeutAccederDossier, getApiProfile } from "@/lib/auth";
-import { refuserSansDroit } from "@/lib/droits";
+import { refuserSansDroit } from "@/lib/droits-serveur";
 import { documentSensible, estTypeDocumentSalarie } from "@/lib/documents-salarie";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {

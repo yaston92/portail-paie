@@ -12,7 +12,7 @@ import {
   uploaderFichier,
 } from "@/lib/storage";
 import { formatDate } from "@/lib/format";
-import { refuserSansDroit } from "@/lib/droits";
+import { refuserSansDroit } from "@/lib/droits-serveur";
 
 export const runtime = "nodejs";
 

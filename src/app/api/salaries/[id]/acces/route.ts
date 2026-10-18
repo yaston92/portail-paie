@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getApiProfile, cabinetPeutAccederDossier } from "@/lib/auth";
-import { refuserSansDroit } from "@/lib/droits";
+import { refuserSansDroit } from "@/lib/droits-serveur";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   getAccesSalarie,

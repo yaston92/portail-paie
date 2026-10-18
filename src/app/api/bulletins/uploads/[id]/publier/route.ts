@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getApiProfile } from "@/lib/auth";
-import { refuserSansDroit } from "@/lib/droits";
+import { refuserSansDroit } from "@/lib/droits-serveur";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { journaliser } from "@/lib/audit";

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getApiProfile, cabinetPeutAccederDossier } from "@/lib/auth";
-import { refuserSansDroit } from "@/lib/droits";
+import { refuserSansDroit } from "@/lib/droits-serveur";
 import { journaliser } from "@/lib/audit";
 import {
   joursOuvres,
