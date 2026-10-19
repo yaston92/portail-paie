@@ -111,8 +111,32 @@ export function estPresentSurMois(
   return true;
 }
 
-/** Validation basique d'un NIR (13 ou 15 chiffres, clé non vérifiée). */
+/**
+ * NIR canonique : 13 caractères (ou 15 avec la clé), chiffres,
+ * ou département corse 2A / 2B. Accepte les espaces, points, tirets
+ * et la notation scientifique qu'Excel produit sur un grand nombre.
+ * Retourne null si le format n'est pas reconnu.
+ */
+export function nirCanonique(nir: string): string | null {
+  let s = nir.trim().toUpperCase().replace(/[\s\u00a0\u202f]/g, "");
+  if (/^[0-9]+([.,][0-9]+)?E\+?[0-9]+$/i.test(s)) {
+    const n = Number(s.replace(",", "."));
+    if (Number.isFinite(n)) s = Math.round(n).toFixed(0);
+  }
+  s = s.replace(/[.,]0+$/, "");
+  s = s.replace(/[\s.\u00a0\u202f\-/]/g, "").replace(/[^0-9AB]/g, "");
+  if (/^[123478][0-9]{12}([0-9]{2})?$/.test(s)) return s;
+  if (/^[12][0-9]{4}2[AB][0-9]{6}([0-9]{2})?$/.test(s)) return s;
+  return null;
+}
+
+/** Les 13 premiers caractères, clé exclue : c'est eux qui identifient la personne. */
+export function racineNir(nir: string): string | null {
+  const c = nirCanonique(nir);
+  return c ? c.slice(0, 13) : null;
+}
+
+/** Validation d'un NIR (13 ou 15 caractères, clé non vérifiée, Corse acceptée). */
 export function nirValide(nir: string): boolean {
-  const clean = nir.replace(/[\s.]/g, "");
-  return /^[12][0-9]{12}([0-9]{2})?$/.test(clean);
+  return nirCanonique(nir) !== null;
 }

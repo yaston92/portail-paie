@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { envoyerEmail, gabaritEmail } from "@/lib/email";
+import { ipClient, tropSouvent } from "@/lib/limite";
 
 const schema = z.object({
   email: z.string().email(),
@@ -22,6 +23,13 @@ export async function POST(request: Request) {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Requête invalide" }, { status: 400 });
+  }
+
+  if (tropSouvent(`inscription:${ipClient(request)}`, 5, 60 * 60 * 1000)) {
+    return NextResponse.json(
+      { error: "Trop de créations de compte. Réessayez dans une heure." },
+      { status: 429 }
+    );
   }
 
   const parsed = schema.safeParse(body);
@@ -61,7 +69,10 @@ export async function POST(request: Request) {
         { status: 409 }
       );
     }
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json(
+      { error: "Impossible de créer le compte. Vérifiez les informations saisies." },
+      { status: 400 }
+    );
   }
 
   const userId = data.user?.id;

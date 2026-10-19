@@ -21,6 +21,7 @@ function DefinirMotDePasseForm() {
   const [chargement, setChargement] = useState(false);
   const [sessionOk, setSessionOk] = useState(false);
   const [init, setInit] = useState(true);
+  const [jeton, setJeton] = useState<{ token_hash: string; type: string } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,32 +33,12 @@ function DefinirMotDePasseForm() {
       const type = params.get("type") as EmailOtpType | null;
 
       if (token_hash && type) {
-        const types: EmailOtpType[] =
-          type === "magiclink" || type === "recovery" || type === "invite"
-            ? [type, "magiclink", "recovery", "invite"]
-            : [type];
-
-        let ok = false;
-        const seen = new Set<string>();
-        for (const t of types) {
-          if (seen.has(t)) continue;
-          seen.add(t);
-          const { error } = await supabase.auth.verifyOtp({ type: t, token_hash });
-          if (!error) {
-            ok = true;
-            break;
-          }
-        }
         if (!cancelled) {
-          if (!ok) {
-            setErreur(
-              "Ce lien d'activation n'est plus valide. Demandez un nouvel envoi depuis l'espace admin."
-            );
-            setInit(false);
-            return;
-          }
-          window.history.replaceState({}, "", "/definir-mot-de-passe");
+          setJeton({ token_hash, type });
+          setSessionOk(true);
+          setInit(false);
         }
+        return;
       } else {
         const code = params.get("code");
         if (code) {
@@ -129,16 +110,37 @@ function DefinirMotDePasseForm() {
       return;
     }
     setChargement(true);
-    const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ password });
-    if (error) {
-      setErreur(
-        "Impossible de définir le mot de passe. Le lien a peut-être expiré : demandez-en un nouveau."
-      );
+    const res = await fetch("/api/auth/definir-mot-de-passe", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        password,
+        token_hash: jeton?.token_hash,
+        type: jeton?.type,
+      }),
+    });
+    const json = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      email?: string | null;
+      access_token?: string | null;
+      refresh_token?: string | null;
+    };
+    if (!res.ok) {
+      setErreur(json.error ?? "Impossible de définir le mot de passe.");
       setChargement(false);
       return;
     }
-    await fetch("/api/auth/acces-active", { method: "POST" }).catch(() => undefined);
+    const supabase = createClient();
+    if (json.access_token && json.refresh_token) {
+      const { error } = await supabase.auth.setSession({
+        access_token: json.access_token,
+        refresh_token: json.refresh_token,
+      });
+      if (error && json.email) {
+        await supabase.auth.signInWithPassword({ email: json.email, password });
+      }
+    }
+    window.history.replaceState({}, "", "/definir-mot-de-passe");
     const { toastSuccess } = await import("@/lib/toast");
     toastSuccess("Mot de passe enregistré");
     router.push("/");

@@ -61,6 +61,9 @@ export function SegmentsControle({
 }: Props) {
   const router = useRouter();
   const [segments, setSegments] = useState(initiaux);
+  const [proposes] = useState(
+    () => new Map(initiaux.map((s) => [s.id, s.salarie_id]))
+  );
   const [erreur, setErreur] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [publication, setPublication] = useState(false);
@@ -254,8 +257,9 @@ export function SegmentsControle({
 
       <p className="text-sm text-gray-600">
         {nbPages} page{nbPages > 1 ? "s" : ""} dans le PDF, {segments.length} bulletin
-        {segments.length > 1 ? "s" : ""} détecté{segments.length > 1 ? "s" : ""}. Ouvrez
-        chaque PDF pour confirmer le découpage, puis corrigez les pages si besoin.
+        {segments.length > 1 ? "s" : ""} détecté{segments.length > 1 ? "s" : ""}. La lecture
+        du PDF propose un salarié (numéro de sécurité sociale, matricule ou nom).
+        Ouvrez le PDF, validez l&apos;envoi ou corrigez l&apos;affectation.
       </p>
 
       {!fige && (
@@ -398,6 +402,12 @@ export function SegmentsControle({
                     ))}
                   </Select>
                 )}
+                {!fige && seg.salarie_id && proposes.get(seg.id) === seg.salarie_id && (
+                  <p className="mt-1 text-[11px] text-gray-500">Lu dans le bulletin</p>
+                )}
+                {!fige && seg.salarie_id && proposes.get(seg.id) !== seg.salarie_id && (
+                  <p className="mt-1 text-[11px] text-gray-500">Affectation modifiée</p>
+                )}
               </Td>
               {(
                 [
@@ -466,7 +476,7 @@ export function SegmentsControle({
             onClick={publier}
             disabled={publication || nonApparies > 0 || doubles.length > 0}
           >
-            {publication ? "Publication…" : "Publier les bulletins"}
+            {publication ? "Publication…" : "Valider et publier"}
           </Button>
           {nonApparies > 0 && (
             <span className="text-sm text-red-600">

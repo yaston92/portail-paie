@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { envoyerEmail, gabaritEmail, styleBoutonEmail } from "@/lib/email";
+import { ipClient, tropSouvent } from "@/lib/limite";
 
 const schema = z.object({
   email: z.string().email(),
@@ -32,6 +33,14 @@ export async function POST(request: Request) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Email invalide" }, { status: 400 });
+  }
+
+  if (tropSouvent(`oubli:${ipClient(request)}`, 5, 15 * 60 * 1000)) {
+    return NextResponse.json({
+      ok: true,
+      message:
+        "Si un compte existe pour cette adresse, un email de réinitialisation vient d'être envoyé.",
+    });
   }
 
   const email = parsed.data.email.trim().toLowerCase();

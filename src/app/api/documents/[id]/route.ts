@@ -61,7 +61,7 @@ export async function GET(
   const ext = nom.includes(".") ? nom.split(".").pop()!.toLowerCase() : "bin";
   return new NextResponse(new Uint8Array(contenu), {
     headers: {
-      "Content-Disposition": `attachment; filename="${nom.replace(/"/g, "")}"`,
+      "Content-Disposition": `attachment; filename="${nom.replace(/[\r\n"]/g, "_").slice(0, 180)}"`,
       "Content-Type": contentTypePourExtension(ext),
       "Cache-Control": "private, no-store",
     },

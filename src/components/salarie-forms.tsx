@@ -303,9 +303,10 @@ export function ImportExcelForm({ dossierId }: { dossierId: string }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <p className="text-xs text-gray-500">
-        Format .xlsx : colonnes : Matricule, Nom, Prénom, Email, NIR, Date
+        Format .xlsx, ligne 1 = en-têtes. Colonnes reconnues : Matricule, Nom,
+        Prénom, Email, NIR (ou N° SS, numéro de sécurité sociale), Date
         d&apos;entrée (AAAA-MM-JJ), Contrat (CDI, CDD ou apprentissage), Durée hebdo, Poste.
-        Ligne 1 = en-têtes.
+        Le numéro de sécurité sociale peut contenir des espaces.
       </p>
       {erreur && <Alert variant="error">{erreur}</Alert>}
       {resultat && (

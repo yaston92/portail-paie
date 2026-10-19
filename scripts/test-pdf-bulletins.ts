@@ -6,6 +6,7 @@
  * et l'extraction des soldes de CP.
  */
 import { PDFDocument, StandardFonts } from "pdf-lib";
+import { nirCanonique, racineNir } from "../src/lib/format";
 import {
   detecterSegments,
   extrairePages,
@@ -133,6 +134,32 @@ async function main() {
       cpSilae.pris === 12,
     `extraction Silae N/N-1 (obtenu : ${JSON.stringify(cpSilae)})`
   );
+
+  const parZeros = detecterSegments(
+    ["BULLETIN\nMatricule : 123\nDUPONT Marie"],
+    [salarie({ id: "s-dupont", nom: "DUPONT", prenom: "Marie", matricule: "00123" })]
+  );
+  assert(
+    parZeros[0]?.salarieId === "s-dupont",
+    `matricule 123 reconnu comme 00123 (obtenu : ${parZeros[0]?.salarieId})`
+  );
+
+  const parNir = detecterSegments(
+    ["Bulletin de paie\nN° SS 1 86 05 75 108 042 12\nNet a payer 1800"],
+    [
+      salarie({ id: "s-nir", nom: "DURAND", prenom: "Lucie", matricule: null }),
+    ].map((s) => ({ ...s, nir: "186057510804299" }))
+  );
+  assert(
+    parNir[0]?.salarieId === "s-nir",
+    `NIR du bulletin reconnu malgré une clé différente (obtenu : ${parNir[0]?.salarieId})`
+  );
+
+  assert(nirCanonique("1 86 05 75 108 042 12") === "186057510804212", "NIR avec espaces");
+  assert(nirCanonique("1,86057510804212E+14") === "186057510804212", "NIR en notation scientifique");
+  assert(racineNir("186052A12345612") === "186052A123456", "NIR corse 2A");
+  assert(nirCanonique("12") === null, "NIR trop court rejeté");
+  assert(nirCanonique("186057510804212.0") === "186057510804212", "NIR Excel terminé par .0");
 
   console.log(process.exitCode === 1 ? "\nDes tests ont échoué." : "\nTous les tests passent.");
 }

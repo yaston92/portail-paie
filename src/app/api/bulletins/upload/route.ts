@@ -3,6 +3,7 @@ import { getApiProfile, cabinetPeutAccederDossier } from "@/lib/auth";
 import { refuserSansDroit } from "@/lib/droits-serveur";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { journaliser } from "@/lib/audit";
+import { dechiffrer } from "@/lib/crypto";
 import { uploaderFichier } from "@/lib/storage";
 import {
   compterPagesPdf,
@@ -99,11 +100,34 @@ export async function POST(request: Request) {
 
   const admin = createAdminClient();
   const salaries = await salariesAttendus(admin, dossierId, mois);
+  const ids = salaries.map((s) => s.id);
+  const { data: sensibles } =
+    ids.length > 0
+      ? await admin
+          .from("salaries_sensibles")
+          .select("salarie_id, nir_chiffre")
+          .in("salarie_id", ids)
+      : { data: [] as { salarie_id: string; nir_chiffre: string }[] };
+  const nirParId = new Map<string, string>();
+  for (const row of sensibles ?? []) {
+    try {
+      nirParId.set(row.salarie_id, dechiffrer(row.nir_chiffre));
+    } catch {
+      /* NIR illisible : l'appariement se fera par matricule ou nom */
+    }
+  }
+  const pourApparier = salaries.map((s) => ({
+    id: s.id,
+    nom: s.nom,
+    prenom: s.prenom,
+    matricule: s.matricule,
+    nir: nirParId.get(s.id) ?? null,
+  }));
   const texteVide = textesPages.every((t) => !t.trim());
   const segments =
     texteVide && nbPages > 1
       ? segmentsUnePageChacun(nbPages)
-      : detecterSegments(textesPages, salaries);
+      : detecterSegments(textesPages, pourApparier);
 
   // Stockage du PDF global
   const { data: upload, error } = await admin

@@ -1,12 +1,18 @@
 import path from "path";
 import { pathToFileURL } from "url";
 import { PDFDocument } from "pdf-lib";
+import { racineNir } from "@/lib/format";
 import type { Salarie } from "@/lib/types";
+
+/** Salarié tel qu'utilisé pour apparier un bulletin (le NIR ne sort pas du serveur). */
+export type SalarieAppariable = Pick<Salarie, "id" | "nom" | "prenom" | "matricule"> & {
+  nir?: string | null;
+};
 
 /**
  * Analyse du PDF global de bulletins produit par le logiciel de paie (Silae / Cegid…).
  * Un bulletin peut faire une ou plusieurs pages : le découpage se fait par
- * détection du salarié (matricule ou nom/prénom) dans le texte de chaque page,
+ * détection du salarié (NIR, matricule ou nom/prénom) dans le texte de chaque page,
  * jamais à nombre de pages fixe.
  */
 
@@ -179,44 +185,76 @@ export async function extraireTextesPages(pdf: Buffer): Promise<string[]> {
   }
 }
 
-/** Cherche le salarié correspondant à une page (matricule prioritaire, puis nom/prénom). */
+function matriculeCanonique(matricule: string): string {
+  const brut = matricule.trim().toUpperCase();
+  if (/^[0-9]+$/.test(brut)) return String(parseInt(brut, 10));
+  return brut;
+}
+
+/** NIR imprimés sur la page (groupe avec espaces, ou bloc compact, Corse 2A/2B). */
+function extraireNirs(textePageNormalise: string): string[] {
+  const trouves = new Set<string>();
+  const motifs = [
+    /(?:^|[^0-9A-Z])([123478](?: ?[0-9]){12}(?:(?: ?[0-9]){2})?)/g,
+    /(?:^|[^0-9A-Z])([12](?: ?[0-9]){4} ?2 ?[AB](?: ?[0-9]){6}(?:(?: ?[0-9]){2})?)/g,
+  ];
+  for (const motif of motifs) {
+    for (const m of textePageNormalise.matchAll(motif)) {
+      const racine = racineNir(m[1] ?? "");
+      if (racine) trouves.add(racine);
+    }
+  }
+  return [...trouves];
+}
+
+function nomPresent(texte: string, nom: string, prenom: string): boolean {
+  const n = normaliser(nom).replace(/-/g, " ").trim();
+  const p = normaliser(prenom).replace(/-/g, " ").trim();
+  if (n.length < 2 || p.length < 2) return false;
+  const t = texte.replace(/-/g, " ");
+  const mot = (valeur: string) =>
+    new RegExp(`(^|[^A-Z])${echapperRegex(valeur)}([^A-Z]|$)`).test(t);
+  if (!mot(n) || !mot(p)) return false;
+  if (t.includes(`${n} ${p}`) || t.includes(`${p} ${n}`)) return true;
+  const iNom = t.indexOf(n);
+  const iPre = t.indexOf(p);
+  return iNom >= 0 && iPre >= 0 && Math.abs(iNom - iPre) <= 48;
+}
+
+/**
+ * Cherche le salarié d'une page.
+ * Priorité : NIR imprimé, puis matricule (zéros de tête ignorés), puis nom et prénom.
+ * Un résultat ambigu reste vide : la personne qui publie choisit à la main.
+ */
 function detecterSalarie(
   textePageNormalise: string,
-  salaries: Salarie[]
+  salaries: SalarieAppariable[]
 ): string | null {
-  // 1. Matricule explicite « Matricule : 7 » (évite les faux positifs type ART.L.3141-3,6,7,11)
-  const parMatricule = salaries.filter((s) => {
-    const mat = s.matricule?.trim().toUpperCase();
-    if (!mat) return false;
-    return new RegExp(
-      `MATRICULE\\D{0,12}${echapperRegex(mat)}([^0-9]|$)`
-    ).test(textePageNormalise);
-  });
-  if (parMatricule.length === 1) return parMatricule[0].id;
+  const racines = extraireNirs(textePageNormalise);
+  if (racines.length > 0) {
+    const parNir = salaries.filter((s) => {
+      const racine = s.nir ? racineNir(s.nir) : null;
+      return racine !== null && racines.includes(racine);
+    });
+    if (parNir.length === 1) return parNir[0].id;
+  }
 
-  // 2. Matricule long (≥3) en limite de mot : trop risqué pour 1-2 chiffres
-  const parMatriculeLong = salaries.filter((s) => {
-    const mat = s.matricule?.trim().toUpperCase();
-    if (!mat || mat.length < 3) return false;
-    return new RegExp(
-      `(^|[^A-Z0-9])${echapperRegex(mat)}([^A-Z0-9]|$)`
-    ).test(textePageNormalise);
-  });
-  if (parMatriculeLong.length === 1) return parMatriculeLong[0].id;
+  const annonces = [
+    ...textePageNormalise.matchAll(
+      /(?:MATRICULE|N\s*MATRICULE)\D{0,16}([A-Z0-9][A-Z0-9-]{0,14})/g
+    ),
+  ].map((m) => matriculeCanonique(m[1] ?? ""));
+  if (annonces.length > 0) {
+    const parMatricule = salaries.filter((s) => {
+      const mat = s.matricule ? matriculeCanonique(s.matricule) : "";
+      return mat.length > 0 && annonces.includes(mat);
+    });
+    if (parMatricule.length === 1) return parMatricule[0].id;
+  }
 
-  // 3. Nom + prénom (dans les deux ordres ; civilité M/MME ignorée via includes)
-  const parNom = salaries.filter((s) => {
-    const nom = normaliser(s.nom);
-    const prenom = normaliser(s.prenom);
-    if (!nom || !prenom) return false;
-    return (
-      textePageNormalise.includes(`${nom} ${prenom}`) ||
-      textePageNormalise.includes(`${prenom} ${nom}`)
-    );
-  });
+  const parNom = salaries.filter((s) => nomPresent(textePageNormalise, s.nom, s.prenom));
   if (parNom.length === 1) return parNom[0].id;
 
-  // Ambigu ou introuvable : correction manuelle sur l'écran de contrôle
   return null;
 }
 
@@ -388,7 +426,7 @@ function round2(n: number): number {
  */
 export function detecterSegments(
   textesPages: string[],
-  salaries: Salarie[]
+  salaries: SalarieAppariable[]
 ): SegmentDetecte[] {
   const segments: SegmentDetecte[] = [];
   let courant: {
