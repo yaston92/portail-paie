@@ -5,6 +5,7 @@ import { getCabinetActif, peutAdminCabinet } from "@/lib/cabinet";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { journaliser } from "@/lib/audit";
 import { envoyerEmail, gabaritEmail, styleBoutonEmail } from "@/lib/email";
+import { hrefEmail, lienActivation } from "@/lib/lien-activation";
 import { inviterOuReinviterClient } from "@/lib/acces-client";
 import type { CabinetRoleMembre } from "@/lib/types";
 
@@ -44,7 +45,7 @@ function lienDepuisGenerateLink(
     (linkData as { hashed_token?: string }).hashed_token;
 
   if (hashed) {
-    return `${appUrl}/definir-mot-de-passe?token_hash=${encodeURIComponent(hashed)}&type=${type}`;
+    return lienActivation(appUrl, "/definir-mot-de-passe", hashed, type);
   }
 
   const action =
@@ -85,8 +86,8 @@ async function envoyerInvitationCabinet(opts: {
         (opts.reinvitation
           ? `Voici un nouveau lien pour définir votre mot de passe et accéder à votre espace ${roleLabel}.`
           : `Vous êtes invité(e) en tant que <strong>${roleLabel}</strong>. Cliquez ci-dessous pour créer votre mot de passe.`) +
-        `<br/><br/><a href="${opts.lien}" style="${styleBoutonEmail()}">Définir mon mot de passe</a>` +
-        `<p style="font-size:12px;color:#666;word-break:break-all;margin-top:16px">${opts.lien}</p>`
+        `<br/><br/><a href="${hrefEmail(opts.lien)}" style="${styleBoutonEmail()}">Définir mon mot de passe</a>` +
+        `<p style="font-size:12px;color:#666;word-break:break-all;margin-top:16px">${hrefEmail(opts.lien)}</p>`
     ),
   });
   if (!envoye) {

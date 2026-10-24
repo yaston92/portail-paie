@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { lireJetonActivation } from "@/lib/lien-activation";
 
 /**
  * Relais d'activation Auth :
@@ -14,11 +15,12 @@ function AuthCallbackInner() {
   const [message, setMessage] = useState("Activation de votre accès…");
 
   useEffect(() => {
-    const token_hash = params.get("token_hash");
-    const type = params.get("type");
+    const lu = lireJetonActivation(window.location.search);
+    const token_hash = lu?.token_hash ?? params.get("token_hash");
+    const type = lu?.type ?? params.get("type") ?? "recovery";
     const code = params.get("code");
 
-    if (token_hash && type) {
+    if (token_hash) {
       if (type === "email_change") {
         const dest = new URL("/auth/confirmer-email", window.location.origin);
         dest.searchParams.set("token_hash", token_hash);

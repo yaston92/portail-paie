@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { envoyerEmail, gabaritEmail, styleBoutonEmail } from "@/lib/email";
+import { hrefEmail, lienActivation } from "@/lib/lien-activation";
 import { ipClient, tropSouvent } from "@/lib/limite";
 
 const schema = z.object({
@@ -80,16 +81,16 @@ export async function POST(request: Request) {
     const base = mobileRedirect.split("?")[0]!.replace(/\/$/, "");
     lienApp = `${base}?token_hash=${encodeURIComponent(hashed)}&type=recovery`;
   }
-  const lienWeb = `${appUrl}/definir-mot-de-passe?token_hash=${encodeURIComponent(hashed)}&type=recovery`;
+  const lienWeb = lienActivation(appUrl, "/definir-mot-de-passe", hashed, "recovery");
   const lienPrincipal = lienApp || lienWeb;
 
   const corps =
     `Bonjour,<br/><br/>Vous avez demandé à réinitialiser votre mot de passe.` +
-    `<br/><br/><a href="${lienPrincipal}" style="${styleBoutonEmail()}">Choisir un nouveau mot de passe</a>` +
+    `<br/><br/><a href="${hrefEmail(lienPrincipal)}" style="${styleBoutonEmail()}">Choisir un nouveau mot de passe</a>` +
     (lienApp
-      ? `<p style="font-size:13px;margin-top:16px">Si l’app ne s’ouvre pas, utilisez ce lien dans le navigateur :<br/><a href="${lienWeb}">${lienWeb}</a></p>`
+      ? `<p style="font-size:13px;margin-top:16px">Si l’app ne s’ouvre pas, utilisez ce lien dans le navigateur :<br/><a href="${hrefEmail(lienWeb)}">${hrefEmail(lienWeb)}</a></p>`
       : "") +
-    `<p style="font-size:12px;color:#666;word-break:break-all;margin-top:16px">${lienPrincipal}</p>` +
+    `<p style="font-size:12px;color:#666;word-break:break-all;margin-top:16px">${hrefEmail(lienPrincipal)}</p>` +
     `<p style="font-size:12px;color:#666;margin-top:12px">Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>`;
 
   const envoye = await envoyerEmail({

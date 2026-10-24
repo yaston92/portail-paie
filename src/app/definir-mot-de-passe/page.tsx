@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { EmailOtpType } from "@supabase/supabase-js";
+import { lireJetonActivation } from "@/lib/lien-activation";
 import { createClient } from "@/lib/supabase/client";
 import { ChampMotDePasse } from "@/components/champ-mot-de-passe";
 import { Alert, Button, Card, CardBody, Label } from "@/components/ui";
@@ -29,10 +30,14 @@ function DefinirMotDePasseForm() {
 
     async function preparerSession() {
       setErreur(null);
-      const token_hash = params.get("token_hash");
-      const type = params.get("type") as EmailOtpType | null;
+      const lu =
+        typeof window !== "undefined"
+          ? lireJetonActivation(window.location.search)
+          : null;
+      const token_hash = lu?.token_hash ?? params.get("token_hash");
+      const type = (lu?.type ?? params.get("type") ?? "recovery") as EmailOtpType;
 
-      if (token_hash && type) {
+      if (token_hash) {
         if (!cancelled) {
           setJeton({ token_hash, type });
           setSessionOk(true);

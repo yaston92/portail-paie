@@ -7,6 +7,7 @@ import {
   gabaritEmail,
   styleBoutonEmail,
 } from "@/lib/email";
+import { hrefEmail, lienActivation } from "@/lib/lien-activation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { supprimerCompteUtilisateur } from "@/lib/supprimer-compte";
@@ -132,7 +133,7 @@ export async function PATCH(request: Request) {
       const base = mobileRedirect.split("?")[0]!.replace(/\/$/, "");
       lienApp = `${base}?token_hash=${encodeURIComponent(hashed)}&type=email_change`;
     }
-    const lienWeb = `${appUrl}/auth/confirmer-email?token_hash=${encodeURIComponent(hashed)}&type=email_change`;
+    const lienWeb = lienActivation(appUrl, "/auth/confirmer-email", hashed, "email_change");
     const lienPrincipal = lienApp || lienWeb;
 
     const prenomAffiche = (prenom || profile.prenom || "").trim();
@@ -140,9 +141,9 @@ export async function PATCH(request: Request) {
       `Bonjour${prenomAffiche ? ` ${prenomAffiche}` : ""},` +
       `<br/><br/>Vous avez demandé à utiliser <strong>${email}</strong> comme nouvelle adresse de connexion sur ETIK Paie.` +
       `<br/><br/>Cliquez sur le bouton ci-dessous pour activer cette adresse. Tant que vous n'avez pas confirmé, votre adresse actuelle (<strong>${profile.email}</strong>) reste active.` +
-      `<br/><br/><a href="${lienPrincipal}" style="${styleBoutonEmail()}">Activer mon nouvel email</a>` +
+      `<br/><br/><a href="${hrefEmail(lienPrincipal)}" style="${styleBoutonEmail()}">Activer mon nouvel email</a>` +
       (lienApp
-        ? `<p style="font-size:13px;margin-top:16px">Si l’app ne s’ouvre pas, utilisez ce lien dans le navigateur :<br/><a href="${lienWeb}">${lienWeb}</a></p>`
+        ? `<p style="font-size:13px;margin-top:16px">Si l’app ne s’ouvre pas, utilisez ce lien dans le navigateur :<br/><a href="${hrefEmail(lienWeb)}">${hrefEmail(lienWeb)}</a></p>`
         : "") +
       `<p style="font-size:12px;color:#666;margin-top:12px">Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>`;
 

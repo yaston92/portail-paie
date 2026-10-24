@@ -1,6 +1,7 @@
 import { randomBytes } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { envoyerEmail, gabaritEmail, styleBoutonEmail } from "@/lib/email";
+import { hrefEmail, lienActivation } from "@/lib/lien-activation";
 import { journaliser } from "@/lib/audit";
 
 export type AccesSalarieStatut = "aucun" | "invitation_en_attente" | "actif";
@@ -28,7 +29,7 @@ function lienDepuisGenerateLink(
     (linkData as { hashed_token?: string }).hashed_token;
 
   if (hashed) {
-    return `${appUrl}/definir-mot-de-passe?token_hash=${encodeURIComponent(hashed)}&type=${type}`;
+    return lienActivation(appUrl, "/definir-mot-de-passe", hashed, type);
   }
 
   const action =
@@ -339,8 +340,8 @@ async function envoyerLienActivation(opts: {
     html: gabaritEmail(
       "Activez votre compte",
       `Bonjour ${opts.prenom || opts.nom},<br/><br/>Voici un lien pour définir votre mot de passe et accéder à votre espace salarié (bulletins, soldes…).` +
-        `<br/><br/><a href="${opts.lien}" style="${styleBoutonEmail()}">Définir mon mot de passe</a>` +
-        `<p style="font-size:12px;color:#666;word-break:break-all;margin-top:16px">${opts.lien}</p>`
+        `<br/><br/><a href="${hrefEmail(opts.lien)}" style="${styleBoutonEmail()}">Définir mon mot de passe</a>` +
+        `<p style="font-size:12px;color:#666;word-break:break-all;margin-top:16px">${hrefEmail(opts.lien)}</p>`
     ),
   });
   if (!envoye) {
@@ -446,7 +447,7 @@ export async function demanderChangementEmailSalarie(opts: {
     throw new Error("Impossible de préparer le lien d'activation.");
   }
 
-  const lien = `${appUrl}/auth/confirmer-email?token_hash=${encodeURIComponent(hashed)}&type=email_change`;
+  const lien = lienActivation(appUrl, "/auth/confirmer-email", hashed, "email_change");
   const prenom = salarie.prenom || "";
   const nom = salarie.nom || "Salarié";
 
@@ -458,7 +459,7 @@ export async function demanderChangementEmailSalarie(opts: {
       `Bonjour${prenom ? ` ${prenom}` : ""},` +
         `<br/><br/>Votre employeur a demandé à utiliser <strong>${nouvelEmail}</strong> comme nouvelle adresse de connexion sur ETIK Paie.` +
         `<br/><br/>Cliquez sur le bouton ci-dessous pour activer cette adresse. Tant que vous n'avez pas confirmé, votre adresse actuelle (<strong>${emailActuel}</strong>) reste active.` +
-        `<br/><br/><a href="${lien}" style="${styleBoutonEmail()}">Activer mon nouvel email</a>` +
+        `<br/><br/><a href="${hrefEmail(lien)}" style="${styleBoutonEmail()}">Activer mon nouvel email</a>` +
         `<p style="font-size:12px;color:#666;margin-top:12px">Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>`
     ),
   });
