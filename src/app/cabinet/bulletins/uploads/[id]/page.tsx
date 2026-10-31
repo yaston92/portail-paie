@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireRole } from "@/lib/auth";
+import { getCabinetActif } from "@/lib/cabinet";
 import { aLeDroit } from "@/lib/droits";
 import { createClient } from "@/lib/supabase/server";
 import { salariesAttendus } from "@/lib/campagne";
@@ -15,17 +16,14 @@ export default async function ControleUploadPage({
   params: Promise<{ id: string }>;
 }) {
   const profile = await requireRole(["admin_cabinet", "collaborateur"]);
-  const { getCabinetActif } = await import("@/lib/cabinet");
-  const cabinet = await getCabinetActif();
-  const peutBulletins = aLeDroit(profile, cabinet, "bulletins");
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: uploadData } = await supabase
-    .from("bulletin_uploads")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+  const [cabinet, { data: uploadData }] = await Promise.all([
+    getCabinetActif(),
+    supabase.from("bulletin_uploads").select("*").eq("id", id).maybeSingle(),
+  ]);
+  const peutBulletins = aLeDroit(profile, cabinet, "bulletins");
   if (!uploadData) notFound();
   const upload = uploadData as BulletinUpload;
 

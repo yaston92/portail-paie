@@ -25,16 +25,14 @@ export default async function CabinetEmbaucheDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const profile = await requireRole(["directeur", "admin_cabinet", "collaborateur"]);
-  const cabinet = await getCabinetActif();
-  const peutEmbauches = aLeDroit(profile, cabinet, "embauches");
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data } = await supabase
-    .from("embauches")
-    .select("*, dossiers(*)")
-    .eq("id", id)
-    .maybeSingle();
+  const [cabinet, { data }] = await Promise.all([
+    getCabinetActif(),
+    supabase.from("embauches").select("*, dossiers(*)").eq("id", id).maybeSingle(),
+  ]);
+  const peutEmbauches = aLeDroit(profile, cabinet, "embauches");
   if (!data) notFound();
   const row = data as Embauche & { dossiers: Dossier | Dossier[] | null };
   const dossierJoint = Array.isArray(row.dossiers) ? row.dossiers[0] : row.dossiers;

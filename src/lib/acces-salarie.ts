@@ -34,8 +34,8 @@ export async function getAccesSalarie(salarieId: string): Promise<AccesSalarieIn
 }
 
 /**
- * Accès espace pour plusieurs salariés en lot (1 requête salaries + profiles,
- * puis getUserById en parallèle uniquement pour les profils liés).
+ * Accès espace pour plusieurs salariés en lot (salariés + profils).
+ * Le statut vient du drapeau mot de passe, sans appel Auth Admin.
  */
 export async function getAccesSalariesBatch(
   salarieIds: string[]
@@ -75,26 +75,6 @@ export async function getAccesSalariesBatch(
     ])
   );
 
-  const authParId = new Map<
-    string,
-    { last_sign_in_at: string | null; invited_at: string | null }
-  >();
-  await Promise.all(
-    profileIds.map(async (pid) => {
-      try {
-        const { data: authData } = await admin.auth.admin.getUserById(pid);
-        const u = authData.user;
-        authParId.set(pid, {
-          last_sign_in_at: u?.last_sign_in_at ?? null,
-          invited_at:
-            (u as { invited_at?: string | null } | undefined)?.invited_at ?? null,
-        });
-      } catch {
-        authParId.set(pid, { last_sign_in_at: null, invited_at: null });
-      }
-    })
-  );
-
   for (const id of salarieIds) {
     const salarie = byId.get(id);
     if (!salarie) {
@@ -118,11 +98,7 @@ export async function getAccesSalariesBatch(
       });
       continue;
     }
-    const auth = authParId.get(profileId) ?? {
-      last_sign_in_at: null,
-      invited_at: null,
-    };
-    const enAttente = doitChangerParProfile.get(profileId) || !auth.last_sign_in_at;
+    const enAttente = doitChangerParProfile.get(profileId) === true;
     out.set(id, {
       statut: enAttente ? "invitation_en_attente" : "actif",
       email:
@@ -130,8 +106,8 @@ export async function getAccesSalariesBatch(
         (salarie.email as string | null) ||
         null,
       profile_id: profileId,
-      invited_at: auth.invited_at,
-      last_sign_in_at: auth.last_sign_in_at,
+      invited_at: null,
+      last_sign_in_at: null,
     });
   }
 

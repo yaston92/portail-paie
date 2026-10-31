@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { obtenirSoldeCp } from "@/lib/solde-cp-sync";
 import { soldePrevisionnel } from "@/lib/demandes-conge";
 import { formatDate, moisLabel } from "@/lib/format";
 import { Alert, Card, CardBody, PageHeader } from "@/components/ui";
@@ -14,7 +13,7 @@ export default async function SalarieAccueilPage() {
   const profile = await requireRole(["salarie"]);
   const supabase = await createClient();
 
-  const [{ data: salarie }, { data: dernierBulletin }, { data: demandesRaw }, { data: arretsRaw }, cp] =
+  const [{ data: salarie }, { data: dernierBulletin }, { data: demandesRaw }, { data: arretsRaw }, { data: cp }] =
     await Promise.all([
       supabase
         .from("salaries")
@@ -40,7 +39,11 @@ export default async function SalarieAccueilPage() {
         .eq("salarie_id", profile.salarie_id!)
         .order("created_at", { ascending: false })
         .limit(50),
-      obtenirSoldeCp(profile.salarie_id!),
+      supabase
+        .from("soldes_cp")
+        .select("*")
+        .eq("salarie_id", profile.salarie_id!)
+        .maybeSingle(),
     ]);
 
   const s = salarie as Salarie | null;

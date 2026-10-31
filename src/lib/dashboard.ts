@@ -123,10 +123,10 @@ export async function calculerDashboard(
       );
     }
   }
-  const dossierIds = dossiers.map((d) => d.id);
+  const dossierIds = new Set(dossiers.map((d) => d.id));
   const campagneParDossier = new Map(
     ((campagnesData ?? []) as unknown as Campagne[])
-      .filter((c) => dossierIds.includes(c.dossier_id))
+      .filter((c) => dossierIds.has(c.dossier_id))
       .map((c) => [c.dossier_id, c])
   );
 
@@ -145,7 +145,13 @@ export async function calculerDashboard(
     collaborateurs.map((c) => [c.id, `${c.prenom} ${c.nom}`.trim()])
   );
 
-  const idsRestants = new Set(dossierIds);
+  const idsRestants = dossierIds;
+  const idsParDossier = new Map<string, string[]>();
+  for (const lien of liens) {
+    const ids = idsParDossier.get(lien.dossier_id) ?? [];
+    ids.push(lien.profile_id);
+    idsParDossier.set(lien.dossier_id, ids);
+  }
   const salariesParDossier = new Map<
     string,
     Pick<Salarie, "id" | "dossier_id" | "date_entree" | "date_sortie">[]
@@ -185,11 +191,7 @@ export async function calculerDashboard(
       paiesEnvoyees > 0 || campagne?.statut === "bulletins_envoyes";
     return {
       dossier,
-      collaborateurNom: nomsCollaborateurs(
-        dossier,
-        liens,
-        nomCollab
-      ),
+      collaborateurNom: nomsCollaborateurs(dossier, idsParDossier, nomCollab),
       campagne,
       paiesAttendues,
       paiesEnvoyees,
@@ -226,12 +228,10 @@ export async function calculerDashboard(
 
 function nomsCollaborateurs(
   dossier: Dossier,
-  liens: { dossier_id: string; profile_id: string }[],
+  idsParDossier: Map<string, string[]>,
   nomCollab: Map<string, string>
 ): string {
-  const ids = liens
-    .filter((l) => l.dossier_id === dossier.id)
-    .map((l) => l.profile_id);
+  const ids = [...(idsParDossier.get(dossier.id) ?? [])];
   if (ids.length === 0 && dossier.collaborateur_id) ids.push(dossier.collaborateur_id);
   const noms = [...new Set(ids)]
     .map((id) => nomCollab.get(id))

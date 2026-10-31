@@ -1,10 +1,13 @@
 import { redirect } from "next/navigation";
+import { requireRole } from "@/lib/auth";
 import { ROLES_CABINET } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
 import {
+  getCabinetActif,
+  getCabinetsMembre,
   peutAdminCabinet,
-  requireCabinetContext,
 } from "@/lib/cabinet";
+import { listerEspaces } from "@/lib/espaces";
 import { AutresEspaces } from "@/components/autres-espaces";
 import { AppShell, type NavItem } from "@/components/app-shell";
 import { CabinetSwitcher } from "@/components/cabinet-switcher";
@@ -14,18 +17,21 @@ export default async function CabinetLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { profile, cabinet, cabinets } = await requireCabinetContext(
-    ROLES_CABINET,
-    { allowEmptyDirecteur: true }
-  );
+  const profile = await requireRole(ROLES_CABINET);
   if (profile.email_confirme === false) redirect("/verifier-email");
 
   const supabase = await createClient();
-  const { count } = await supabase
-    .from("notifications")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", profile.id)
-    .eq("lu", false);
+  const [{ count }, cabinets, cabinet] = await Promise.all([
+    supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", profile.id)
+      .eq("lu", false),
+    getCabinetsMembre(profile.id),
+    getCabinetActif(),
+    listerEspaces(profile).catch(() => []),
+  ]);
+  if (!cabinet && profile.role !== "directeur") redirect("/login");
 
   const estAdmin = cabinet
     ? peutAdminCabinet(profile, cabinet)

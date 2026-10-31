@@ -30,8 +30,14 @@ export default async function ClientSalarieDetailPage({
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data }, { data: arretsData }, { data: documentsData }, { data: voisinsData }, acces] =
-    await Promise.all([
+  const [
+    { data },
+    { data: arretsData },
+    { data: documentsData },
+    { data: voisinsData },
+    acces,
+    { data: dossierPlanning, error: errPlanning },
+  ] = await Promise.all([
     supabase
       .from("salaries")
       .select("*")
@@ -55,15 +61,15 @@ export default async function ClientSalarieDetailPage({
       .eq("dossier_id", profile.dossier_id!)
       .order("nom"),
     getAccesSalarie(id),
+    supabase
+      .from("dossiers")
+      .select("planning_actif")
+      .eq("id", profile.dossier_id!)
+      .maybeSingle(),
   ]);
 
   if (!data) notFound();
   const s = data as Salarie;
-  const { data: dossierPlanning, error: errPlanning } = await supabase
-    .from("dossiers")
-    .select("planning_actif")
-    .eq("id", profile.dossier_id!)
-    .maybeSingle();
   const planningActif = !errPlanning && dossierPlanning?.planning_actif === true;
   const arrets = (arretsData ?? []) as ArretMaladie[];
   const voisins = (voisinsData ?? []) as { id: string; nom: string; prenom: string }[];

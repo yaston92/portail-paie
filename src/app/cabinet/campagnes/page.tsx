@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
+import { chargerAvecCabinet } from "@/lib/cabinet";
 import { aLeDroit } from "@/lib/droits";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, formatDateTime, moisCourant, moisLabel } from "@/lib/format";
@@ -30,45 +32,41 @@ export default async function CabinetCampagnesPage({
   const profile = await requireRole(["admin_cabinet", "collaborateur"]);
   const sp = await searchParams;
   const mois = /^\d{4}-\d{2}-01$/.test(sp.mois ?? "") ? sp.mois! : moisCourant();
-  const { getCabinetActif } = await import("@/lib/cabinet");
-  const cabinet = await getCabinetActif();
-  if (!cabinet) {
-    const { redirect } = await import("next/navigation");
-    redirect("/cabinet/cabinets");
-  }
-  const cabinetId = cabinet!.id;
+  const { cabinet, data } = await chargerAvecCabinet(async (cabinetId) => {
+    const supabase = await createClient();
+    let dossierQuery = supabase
+      .from("dossiers")
+      .select("id, sigle, raison_sociale, archive, cabinet_id")
+      .eq("archive", false)
+      .eq("cabinet_id", cabinetId)
+      .order("sigle");
+    if (sp.dossier) dossierQuery = dossierQuery.eq("id", sp.dossier);
+    const [{ data: dossiers }, { data: campagnes }, { data: facture }] = await Promise.all([
+      dossierQuery,
+      supabase
+        .from("campagnes")
+        .select(
+          "id, dossier_id, mois, statut, date_limite, envoyee_at, derniere_relance_at, paies_identiques, dossiers!inner(cabinet_id)"
+        )
+        .eq("mois", mois)
+        .eq("dossiers.cabinet_id", cabinetId),
+      supabase
+        .from("facturation_mois")
+        .select("id")
+        .eq("cabinet_id", cabinetId)
+        .eq("mois", mois)
+        .maybeSingle(),
+    ]);
+    return { dossiers, campagnes, facture };
+  });
+  if (!cabinet || !data) redirect("/cabinet/cabinets");
   const peutVariables = aLeDroit(profile, cabinet, "variables");
-  const supabase = await createClient();
-
-  let dossierQuery = supabase
-    .from("dossiers")
-    .select("id, sigle, raison_sociale, archive, cabinet_id")
-    .eq("archive", false)
-    .eq("cabinet_id", cabinetId)
-    .order("sigle");
-  if (sp.dossier) dossierQuery = dossierQuery.eq("id", sp.dossier);
-  const [{ data: dossiers }, { data: campagnes }] = await Promise.all([
-    dossierQuery,
-    supabase
-      .from("campagnes")
-      .select(
-        "id, dossier_id, mois, statut, date_limite, envoyee_at, derniere_relance_at, paies_identiques, dossiers!inner(cabinet_id)"
-      )
-      .eq("mois", mois)
-      .eq("dossiers.cabinet_id", cabinetId),
-  ]);
-
-  const listeDossiers = (dossiers ?? []) as Dossier[];
+  const listeDossiers = (data.dossiers ?? []) as Dossier[];
   const campagneParDossier = new Map(
-    ((campagnes ?? []) as unknown as Campagne[]).map((c) => [c.dossier_id, c])
+    ((data.campagnes ?? []) as unknown as Campagne[]).map((c) => [c.dossier_id, c])
   );
   const sansCampagne = listeDossiers.filter((d) => !campagneParDossier.has(d.id));
-  const { data: facture } = await supabase
-    .from("facturation_mois")
-    .select("id")
-    .eq("cabinet_id", cabinetId)
-    .eq("mois", mois)
-    .maybeSingle();
+  const facture = data.facture;
 
   const moisPrecedent = new Date(mois + "T00:00:00");
   moisPrecedent.setMonth(moisPrecedent.getMonth() - 1);

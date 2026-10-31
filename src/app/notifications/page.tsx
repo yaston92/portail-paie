@@ -30,7 +30,6 @@ export default async function NotificationsPage() {
     profile.role === "client"
       ? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
       : null;
-  const admin = limite ? createAdminClient() : null;
   let query = supabase
     .from("notifications")
     .select("*")
@@ -38,25 +37,28 @@ export default async function NotificationsPage() {
     .order("created_at", { ascending: false })
     .limit(100);
   if (limite) query = query.gte("created_at", limite);
-  const [{ data }] = await Promise.all([
-    query,
-    admin
-      ? admin
+  const { data } = await query;
+  const notifications = (data ?? []) as Notification[];
+  const aDesNonLues = notifications.some((n) => !n.lu);
+
+  if (aDesNonLues || limite) {
+    const userId = profile.id;
+    const avant = limite;
+    after(async () => {
+      if (avant) {
+        await createAdminClient()
           .from("notifications")
           .delete()
-          .eq("user_id", profile.id)
-          .lt("created_at", limite!)
-      : Promise.resolve(),
-  ]);
-  const notifications = (data ?? []) as Notification[];
-
-  if (notifications.some((n) => !n.lu) || notifications.length === 100) {
-    after(async () => {
-      await supabase
-        .from("notifications")
-        .update({ lu: true })
-        .eq("user_id", profile.id)
-        .eq("lu", false);
+          .eq("user_id", userId)
+          .lt("created_at", avant);
+      }
+      if (aDesNonLues) {
+        await supabase
+          .from("notifications")
+          .update({ lu: true })
+          .eq("user_id", userId)
+          .eq("lu", false);
+      }
     });
   }
 

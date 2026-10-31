@@ -20,7 +20,7 @@ export default async function ClientSalariesPage() {
 
   const { data } = await supabase
     .from("salaries")
-    .select("*")
+    .select("id, nom, prenom, date_entree, date_sortie, motif_sortie")
     .eq("dossier_id", profile.dossier_id!)
     .order("nom");
 

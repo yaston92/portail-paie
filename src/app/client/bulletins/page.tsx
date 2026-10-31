@@ -16,7 +16,7 @@ export default async function ClientBulletinsPage() {
 
   const { data } = await supabase
     .from("bulletins")
-    .select("id, mois")
+    .select("mois")
     .eq("dossier_id", profile.dossier_id!)
     .order("mois", { ascending: false });
 

@@ -55,47 +55,16 @@ export async function getAccesClientDossier(dossierId: string): Promise<AccesCli
     };
   }
 
-  // Auth Admin en parallèle (évite N getUserById séquentiels)
-  const users = await Promise.all(
-    clients.map(async (c) => {
-      const { data } = await admin.auth.admin.getUserById(c.id);
-      return { client: c, user: data.user };
-    })
-  );
-
-  for (const { client: c, user: u } of users) {
-    if (!u) continue;
-    const signIn = u.last_sign_in_at ?? null;
-    const invited = (u as { invited_at?: string | null }).invited_at ?? null;
-    if (signIn) {
-      return {
-        statut: "actif",
-        email: c.email || dossier?.email || null,
-        profile_id: c.id,
-        invited_at: invited,
-        last_sign_in_at: signIn,
-        doit_changer_mot_de_passe: Boolean(
-          (c as { doit_changer_mot_de_passe?: boolean }).doit_changer_mot_de_passe
-        ),
-      };
-    }
-  }
-
-  const premier = users.find((x) => x.user) ?? { client: clients[0]!, user: null };
-  const lastSignIn = premier.user?.last_sign_in_at ?? null;
-  const invitedAt =
-    (premier.user as { invited_at?: string | null } | null | undefined)?.invited_at ??
-    null;
-
+  const choisi =
+    clients.find((c) => !c.doit_changer_mot_de_passe) ?? clients[0]!;
+  const doitChanger = Boolean(choisi.doit_changer_mot_de_passe);
   return {
-    statut: lastSignIn ? "actif" : "invitation_en_attente",
-    email: premier.client.email || dossier?.email || null,
-    profile_id: premier.client.id,
-    invited_at: invitedAt,
-    last_sign_in_at: lastSignIn,
-    doit_changer_mot_de_passe: Boolean(
-      (premier.client as { doit_changer_mot_de_passe?: boolean }).doit_changer_mot_de_passe
-    ),
+    statut: doitChanger ? "invitation_en_attente" : "actif",
+    email: choisi.email || dossier?.email || null,
+    profile_id: choisi.id,
+    invited_at: null,
+    last_sign_in_at: null,
+    doit_changer_mot_de_passe: doitChanger,
   };
 }
 

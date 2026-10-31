@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export type EspaceLien = {
@@ -17,7 +18,9 @@ type ProfilMin = {
 };
 
 /** Espaces que ce compte peut ouvrir (sociétés salariées, espace client, cabinet). */
-export async function listerEspaces(profile: ProfilMin): Promise<EspaceLien[]> {
+export const listerEspaces = cache(async function listerEspaces(
+  profile: ProfilMin
+): Promise<EspaceLien[]> {
   const admin = createAdminClient();
   const liens: EspaceLien[] = [];
 
@@ -117,7 +120,7 @@ export async function listerEspaces(profile: ProfilMin): Promise<EspaceLien[]> {
   }
 
   return liens;
-}
+});
 
 /** Ajoute un accès salarié sans remplacer le rôle ni le mot de passe déjà en place. */
 export async function ajouterEspaceSalarie(opts: {

@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { HEADER_USER_ID } from "@/lib/session-header";
 
 const CHEMINS_PUBLICS = [
   "/login",
@@ -13,8 +14,30 @@ const CHEMINS_PUBLICS = [
   "/contact",
 ];
 
+function aUneSession(request: NextRequest): boolean {
+  return request.cookies.getAll().some((c) => {
+    if (!c.value) return false;
+    return (
+      c.name.startsWith("sb-") &&
+      c.name.includes("-auth-token") &&
+      !c.name.includes("code-verifier")
+    );
+  });
+}
+
+function copierCookies(depuis: NextResponse, vers: NextResponse) {
+  for (const cookie of depuis.headers.getSetCookie()) {
+    vers.headers.append("set-cookie", cookie);
+  }
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.delete(HEADER_USER_ID);
+
+  const suite = () =>
+    NextResponse.next({ request: { headers: requestHeaders } });
 
   // Pages légales : accessibles sans compte, sans lecture de session.
   if (
@@ -22,16 +45,28 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/privacy") ||
     pathname.startsWith("/contact")
   ) {
-    return NextResponse.next({ request });
+    return suite();
   }
 
   // Les routes API s'authentifient elles-mêmes (cookies web OU Bearer mobile).
   // Ne jamais rediriger vers /login ici : l'app Expo n'a pas de cookies Next.
   if (pathname.startsWith("/api/")) {
-    return NextResponse.next({ request });
+    return suite();
   }
 
-  let response = NextResponse.next({ request });
+  const estPublic = CHEMINS_PUBLICS.some((p) => pathname.startsWith(p));
+
+  // Pas de jeton : inutile d'appeler Supabase Auth (c'est l'aller-retour le plus lent).
+  if (!aUneSession(request)) {
+    if (!estPublic && pathname !== "/") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
+    }
+    return suite();
+  }
+
+  let cookieResponse = suite();
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -45,9 +80,11 @@ export async function proxy(request: NextRequest) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
-          response = NextResponse.next({ request });
+          cookieResponse = NextResponse.next({
+            request: { headers: requestHeaders },
+          });
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+            cookieResponse.cookies.set(name, value, options)
           );
         },
       },
@@ -59,15 +96,19 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const estPublic = CHEMINS_PUBLICS.some((p) => pathname.startsWith(p));
+  if (user) requestHeaders.set(HEADER_USER_ID, user.id);
 
   if (!user && !estPublic && pathname !== "/") {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    const redirection = NextResponse.redirect(url);
+    copierCookies(cookieResponse, redirection);
+    return redirection;
   }
 
-  return response;
+  const out = suite();
+  copierCookies(cookieResponse, out);
+  return out;
 }
 
 export const config = {

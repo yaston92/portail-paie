@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
-import { getCabinetActif } from "@/lib/cabinet";
+import { chargerAvecCabinet } from "@/lib/cabinet";
 import { createClient } from "@/lib/supabase/server";
 import { calculerDashboard } from "@/lib/dashboard";
 import { formatDate, moisCourant, moisLabel } from "@/lib/format";
@@ -73,16 +73,13 @@ export default async function CabinetDashboardPage({
   const mois = /^\d{4}-\d{2}-01$/.test(sp.mois ?? "") ? sp.mois! : moisCourant();
   const collaborateurId = sp.collaborateur || undefined;
 
-  const cabinet = await getCabinetActif();
-  if (!cabinet) redirect("/cabinet/cabinets");
-
-  const supabase = await createClient();
-  const { lignes, totaux, collaborateurs: collabs } = await calculerDashboard(
-    supabase,
-    mois,
-    collaborateurId,
-    cabinet.id
-  );
+  const { cabinet, data } = await chargerAvecCabinet((cabinetId) => {
+    return createClient().then((supabase) =>
+      calculerDashboard(supabase, mois, collaborateurId, cabinetId)
+    );
+  });
+  if (!cabinet || !data) redirect("/cabinet/cabinets");
+  const { lignes, totaux, collaborateurs: collabs } = data;
 
   const enRetard = lignes.filter((l) => l.enRetard);
 

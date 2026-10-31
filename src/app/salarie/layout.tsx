@@ -1,4 +1,5 @@
 import { requireRole } from "@/lib/auth";
+import { listerEspaces } from "@/lib/espaces";
 import { createClient } from "@/lib/supabase/server";
 import { AutresEspaces } from "@/components/autres-espaces";
 import { AppShell, type NavItem } from "@/components/app-shell";
@@ -11,11 +12,14 @@ export default async function SalarieLayout({
   const profile = await requireRole(["salarie"]);
 
   const supabase = await createClient();
-  const { count } = await supabase
-    .from("notifications")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", profile.id)
-    .eq("lu", false);
+  const [{ count }] = await Promise.all([
+    supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", profile.id)
+      .eq("lu", false),
+    listerEspaces(profile).catch(() => []),
+  ]);
 
   const items: NavItem[] = [
     { href: "/salarie", label: "Accueil" },

@@ -3,6 +3,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { COOKIE_ESPACE, HEADER_ESPACE } from "@/lib/espace";
+import { HEADER_USER_ID } from "@/lib/session-header";
 import type { Profile, UserRole } from "@/lib/types";
 import { ROLES_CABINET, isCabinetRole } from "@/lib/types";
 
@@ -26,16 +27,28 @@ export { isCabinetRole, ROLES_CABINET };
  * `cache()` : une seule requête auth+profil par rendu serveur
  * (layout + page partagent le même résultat).
  */
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export const getProfile = cache(async (): Promise<Profile | null> => {
+  const headerStore = await headers();
+  const annonce = headerStore.get(HEADER_USER_ID)?.trim() ?? "";
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  // Le proxy a déjà validé le jeton. On évite un second aller-retour Auth.
+  let userId: string | null = null;
+  if (UUID.test(annonce)) {
+    userId = annonce;
+  } else {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    userId = user?.id ?? null;
+  }
+  if (!userId) return null;
   const { data } = await supabase
     .from("profiles")
     .select("*")
-    .eq("id", user.id)
+    .eq("id", userId)
     .single();
   const profile = (data as Profile) ?? null;
   if (!profile) return null;

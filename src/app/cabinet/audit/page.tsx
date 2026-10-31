@@ -25,16 +25,28 @@ export default async function AuditPage() {
   await requireRole(["admin_cabinet"]);
   const supabase = await createClient();
 
-  const [{ data: logs }, { data: profils }, { data: dossiers }] =
-    await Promise.all([
-      supabase
-        .from("audit_log")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(300),
-      supabase.from("profiles").select("id, nom, prenom, email"),
-      supabase.from("dossiers").select("id, sigle"),
-    ]);
+  const { data: logs } = await supabase
+    .from("audit_log")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(300);
+  const lignesBrutes = (logs ?? []) as LigneAudit[];
+  const userIds = [
+    ...new Set(lignesBrutes.map((l) => l.user_id).filter((id): id is string => !!id)),
+  ];
+  const dossierIds = [
+    ...new Set(
+      lignesBrutes.map((l) => l.dossier_id).filter((id): id is string => !!id)
+    ),
+  ];
+  const [{ data: profils }, { data: dossiers }] = await Promise.all([
+    userIds.length
+      ? supabase.from("profiles").select("id, nom, prenom, email").in("id", userIds)
+      : Promise.resolve({ data: [] as Profile[] }),
+    dossierIds.length
+      ? supabase.from("dossiers").select("id, sigle").in("id", dossierIds)
+      : Promise.resolve({ data: [] as Pick<Dossier, "id" | "sigle">[] }),
+  ]);
 
   const nomParId = new Map(
     ((profils ?? []) as Profile[]).map((p) => [
@@ -45,7 +57,7 @@ export default async function AuditPage() {
   const sigleParDossier = new Map(
     ((dossiers ?? []) as Pick<Dossier, "id" | "sigle">[]).map((d) => [d.id, d.sigle])
   );
-  const lignes = (logs ?? []) as LigneAudit[];
+  const lignes = lignesBrutes;
 
   return (
     <div className="space-y-4">

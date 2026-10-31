@@ -11,7 +11,7 @@ export default async function SalarieBulletinsPage() {
 
   const { data } = await supabase
     .from("bulletins")
-    .select("id, mois")
+    .select("mois")
     .eq("salarie_id", profile.salarie_id!)
     .order("mois", { ascending: false });
 

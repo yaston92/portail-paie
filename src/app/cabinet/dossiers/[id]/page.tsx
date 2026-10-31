@@ -34,15 +34,12 @@ export default async function DossierDetailPage({
   searchParams: Promise<{ cree?: string }>;
 }) {
   const profile = await requireRole(["admin_cabinet", "collaborateur"]);
-  const cabinet = await getCabinetActif();
-  const peutSalaries = aLeDroit(profile, cabinet, "salaries");
-  const peutVariables = aLeDroit(profile, cabinet, "variables");
   const { id } = await params;
   const { cree } = await searchParams;
   const supabase = await createClient();
   const mois = moisCourant();
 
-  const [
+  const [cabinet, [
     { data: dossier },
     { data: salaries },
     accesClient,
@@ -50,7 +47,9 @@ export default async function DossierDetailPage({
     { data: membresRows },
     { data: liensCollab },
     { data: attestations },
-  ] = await Promise.all([
+  ]] = await Promise.all([
+    getCabinetActif(),
+    Promise.all([
     supabase.from("dossiers").select("*").eq("id", id).maybeSingle(),
     supabase
       .from("salaries")
@@ -76,7 +75,10 @@ export default async function DossierDetailPage({
       .select("id, dossier_id, type, nom_fichier, created_at")
       .eq("dossier_id", id)
       .order("created_at", { ascending: false }),
+    ]),
   ]);
+  const peutSalaries = aLeDroit(profile, cabinet, "salaries");
+  const peutVariables = aLeDroit(profile, cabinet, "variables");
 
   if (!dossier) notFound();
   const d = dossier as Dossier;

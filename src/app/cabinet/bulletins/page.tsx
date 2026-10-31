@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
-import { getCabinetActif } from "@/lib/cabinet";
+import { chargerAvecCabinet } from "@/lib/cabinet";
 import { createClient } from "@/lib/supabase/server";
 import { moisLabel, moisVersParam } from "@/lib/format";
 import { BulletinsUploadForm } from "@/components/bulletins-upload-form";
@@ -20,24 +20,25 @@ export default async function CabinetBulletinsPage({
 }) {
   await requireRole(["admin_cabinet", "collaborateur"]);
   const sp = await searchParams;
-  const cabinet = await getCabinetActif();
-  if (!cabinet) redirect("/cabinet/cabinets");
-
-  const supabase = await createClient();
-
-  const [{ data: dossiers }, { data: uploads }] = await Promise.all([
-    supabase
-      .from("dossiers")
-      .select("id, sigle, raison_sociale")
-      .eq("archive", false)
-      .eq("cabinet_id", cabinet.id)
-      .order("sigle"),
-    supabase
-      .from("bulletin_uploads")
-      .select("id, mois, dossier_id, dossiers!inner(cabinet_id)")
-      .eq("dossiers.cabinet_id", cabinet.id)
-      .order("mois", { ascending: false }),
-  ]);
+  const { cabinet, data } = await chargerAvecCabinet(async (cabinetId) => {
+    const supabase = await createClient();
+    const [{ data: dossiers }, { data: uploads }] = await Promise.all([
+      supabase
+        .from("dossiers")
+        .select("id, sigle, raison_sociale")
+        .eq("archive", false)
+        .eq("cabinet_id", cabinetId)
+        .order("sigle"),
+      supabase
+        .from("bulletin_uploads")
+        .select("id, mois, dossier_id, dossiers!inner(cabinet_id)")
+        .eq("dossiers.cabinet_id", cabinetId)
+        .order("mois", { ascending: false }),
+    ]);
+    return { dossiers, uploads };
+  });
+  if (!cabinet || !data) redirect("/cabinet/cabinets");
+  const { dossiers, uploads } = data;
 
   const listeDossiers = (dossiers ?? []) as Pick<
     Dossier,

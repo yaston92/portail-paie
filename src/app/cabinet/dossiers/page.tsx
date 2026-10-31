@@ -1,9 +1,8 @@
 import Link from "next/link";
+import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import {
-  peutAdminCabinet,
-  requireCabinetContext,
-} from "@/lib/cabinet";
+import { chargerAvecCabinet, peutAdminCabinet } from "@/lib/cabinet";
+import { ROLES_CABINET } from "@/lib/types";
 import {
   Badge,
   ButtonLink,
@@ -16,27 +15,25 @@ import type { Dossier, Profile } from "@/lib/types";
 import { redirect } from "next/navigation";
 
 export default async function DossiersPage() {
-  const ctx = await requireCabinetContext();
-  if (!ctx.cabinet) redirect("/cabinet/cabinets");
-  const { profile, cabinet } = ctx;
-  const supabase = await createClient();
+  const profile = await requireRole(ROLES_CABINET);
+  const { cabinet, data } = await chargerAvecCabinet(async (cabinetId) => {
+    const supabase = await createClient();
+    const [{ data: dossiers }, { data: membres }, { data: liens }] = await Promise.all([
+      supabase.from("dossiers").select("*").eq("cabinet_id", cabinetId).order("sigle"),
+      supabase
+        .from("cabinet_membres")
+        .select("profile:profiles (id, nom, prenom)")
+        .eq("cabinet_id", cabinetId),
+      supabase
+        .from("dossier_collaborateurs")
+        .select("dossier_id, profile_id, dossiers!inner(cabinet_id)")
+        .eq("dossiers.cabinet_id", cabinetId),
+    ]);
+    return { dossiers, membres, liens };
+  });
+  if (!cabinet || !data) redirect("/cabinet/cabinets");
   const estAdmin = peutAdminCabinet(profile, cabinet);
-
-  const [{ data: dossiers }, { data: membres }, { data: liens }] = await Promise.all([
-    supabase
-      .from("dossiers")
-      .select("*")
-      .eq("cabinet_id", cabinet.id)
-      .order("sigle"),
-    supabase
-      .from("cabinet_membres")
-      .select("profile:profiles (id, nom, prenom)")
-      .eq("cabinet_id", cabinet.id),
-    supabase
-      .from("dossier_collaborateurs")
-      .select("dossier_id, profile_id, dossiers!inner(cabinet_id)")
-      .eq("dossiers.cabinet_id", cabinet.id),
-  ]);
+  const { dossiers, membres, liens } = data;
 
   const collabParId = new Map<string, string>();
   for (const row of membres ?? []) {

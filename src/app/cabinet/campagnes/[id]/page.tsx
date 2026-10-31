@@ -32,17 +32,15 @@ export default async function CabinetCampagneDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const profile = await requireRole(["admin_cabinet", "collaborateur"]);
-  const cabinet = await getCabinetActif();
-  const peutVariables = aLeDroit(profile, cabinet, "variables");
-  const peutBulletins = aLeDroit(profile, cabinet, "bulletins");
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data } = await supabase
-    .from("campagnes")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+  const [cabinet, { data }] = await Promise.all([
+    getCabinetActif(),
+    supabase.from("campagnes").select("*").eq("id", id).maybeSingle(),
+  ]);
+  const peutVariables = aLeDroit(profile, cabinet, "variables");
+  const peutBulletins = aLeDroit(profile, cabinet, "bulletins");
   if (!data) notFound();
   const campagne = data as Campagne;
 

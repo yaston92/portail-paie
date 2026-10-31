@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
+import { chargerAvecCabinet } from "@/lib/cabinet";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import {
@@ -69,20 +71,17 @@ function Tableau({
 
 export default async function CabinetEmbauchesPage() {
   const profile = await requireRole(["directeur", "admin_cabinet", "collaborateur"]);
-  const { getCabinetActif } = await import("@/lib/cabinet");
-  const cabinet = await getCabinetActif();
-  if (!cabinet) {
-    const { redirect } = await import("next/navigation");
-    redirect("/cabinet/cabinets");
-  }
-  const supabase = await createClient();
-
-  const { data: embauches } = await supabase
-    .from("embauches")
-    .select("*, dossiers!inner(sigle)")
-    .eq("dossiers.cabinet_id", cabinet!.id)
-    .order("created_at", { ascending: false })
-    .limit(200);
+  const { cabinet, data: embauches } = await chargerAvecCabinet(async (cabinetId) => {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("embauches")
+      .select("*, dossiers!inner(sigle)")
+      .eq("dossiers.cabinet_id", cabinetId)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    return data;
+  });
+  if (!cabinet) redirect("/cabinet/cabinets");
 
   const sigleParDossier = new Map<string, string>();
   const liste = ((embauches ?? []) as (Embauche & {

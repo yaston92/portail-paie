@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
+import { listerEspaces } from "@/lib/espaces";
 import { createClient } from "@/lib/supabase/server";
 import { AutresEspaces } from "@/components/autres-espaces";
 import { AppShell, type NavItem } from "@/components/app-shell";
@@ -13,21 +14,22 @@ export default async function ClientLayout({
   if (profile.doit_changer_mot_de_passe) redirect("/changer-mot-de-passe");
 
   const supabase = await createClient();
-  const { count } = await supabase
-    .from("notifications")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", profile.id)
-    .eq("lu", false);
-
-  let planningActif = false;
-  if (profile.dossier_id) {
-    const { data: dossier, error } = await supabase
-      .from("dossiers")
-      .select("planning_actif")
-      .eq("id", profile.dossier_id)
-      .maybeSingle();
-    planningActif = !error && dossier?.planning_actif === true;
-  }
+  const [{ count }, planning] = await Promise.all([
+    supabase
+      .from("notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", profile.id)
+      .eq("lu", false),
+    profile.dossier_id
+      ? supabase
+          .from("dossiers")
+          .select("planning_actif")
+          .eq("id", profile.dossier_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    listerEspaces(profile).catch(() => []),
+  ]);
+  const planningActif = !planning.error && planning.data?.planning_actif === true;
 
   const items: NavItem[] = [
     { href: "/client", label: "Accueil" },

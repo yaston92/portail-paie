@@ -106,6 +106,27 @@ export async function requireCabinetContext(
   return { profile, cabinet, cabinets };
 }
 
+/**
+ * Lance le chargement de la page en même temps que la vérification du cabinet.
+ * Le cookie évite d'attendre la liste des cabinets avant les requêtes métier.
+ */
+export async function chargerAvecCabinet<T>(
+  charger: (cabinetId: string) => Promise<T>
+): Promise<{ cabinet: CabinetAvecRole; data: T } | { cabinet: null; data: null }> {
+  const demande = await lireCabinetIdDemande();
+  if (demande) {
+    const [cabinet, data] = await Promise.all([getCabinetActif(), charger(demande)]);
+    if (!cabinet) return { cabinet: null, data: null };
+    if (cabinet.id !== demande) {
+      return { cabinet, data: await charger(cabinet.id) };
+    }
+    return { cabinet, data };
+  }
+  const cabinet = await getCabinetActif();
+  if (!cabinet) return { cabinet: null, data: null };
+  return { cabinet, data: await charger(cabinet.id) };
+}
+
 export function peutAdminCabinet(
   profile: Profile,
   cabinet: CabinetAvecRole

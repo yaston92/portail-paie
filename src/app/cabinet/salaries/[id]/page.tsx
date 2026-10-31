@@ -37,16 +37,14 @@ export default async function SalarieDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const profile = await requireRole(["admin_cabinet", "collaborateur"]);
-  const cabinet = await getCabinetActif();
-  const peutSalaries = aLeDroit(profile, cabinet, "salaries");
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: salarie } = await supabase
-    .from("salaries")
-    .select("*")
-    .eq("id", id)
-    .maybeSingle();
+  const [cabinet, { data: salarie }] = await Promise.all([
+    getCabinetActif(),
+    supabase.from("salaries").select("*").eq("id", id).maybeSingle(),
+  ]);
+  const peutSalaries = aLeDroit(profile, cabinet, "salaries");
   if (!salarie) notFound();
   const s = salarie as Salarie;
 

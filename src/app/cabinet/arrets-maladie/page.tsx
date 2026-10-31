@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
+import { chargerAvecCabinet } from "@/lib/cabinet";
 import { aLeDroit } from "@/lib/droits";
 import { createClient } from "@/lib/supabase/server";
 import { formatDateCourte } from "@/lib/format";
@@ -104,20 +106,17 @@ function Tableau({
 /** Arrêts maladie transmis par les salariés ou clients (cabinet). */
 export default async function CabinetArretsMaladiePage() {
   const profile = await requireRole(["admin_cabinet", "collaborateur"]);
-  const { getCabinetActif } = await import("@/lib/cabinet");
-  const cabinet = await getCabinetActif();
-  if (!cabinet) {
-    const { redirect } = await import("next/navigation");
-    redirect("/cabinet/cabinets");
-  }
-  const supabase = await createClient();
-
-  const { data } = await supabase
-    .from("arrets_maladie")
-    .select("*, salaries(nom, prenom), dossiers!inner(sigle, cabinet_id)")
-    .eq("dossiers.cabinet_id", cabinet!.id)
-    .order("created_at", { ascending: false })
-    .limit(200);
+  const { cabinet, data } = await chargerAvecCabinet(async (cabinetId) => {
+    const supabase = await createClient();
+    const { data: lignes } = await supabase
+      .from("arrets_maladie")
+      .select("*, salaries(nom, prenom), dossiers!inner(sigle, cabinet_id)")
+      .eq("dossiers.cabinet_id", cabinetId)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    return lignes;
+  });
+  if (!cabinet) redirect("/cabinet/cabinets");
 
   const peutAgir = aLeDroit(profile, cabinet, "absences");
   const liste = (data ?? []) as ArretLigne[];
