@@ -19,6 +19,7 @@ import {
   Td,
   Th,
 } from "@/components/ui";
+import { FacturationMois } from "@/components/facturation-mois";
 import type { Campagne, Dossier } from "@/lib/types";
 
 export default async function CabinetCampagnesPage({
@@ -62,6 +63,12 @@ export default async function CabinetCampagnesPage({
     ((campagnes ?? []) as unknown as Campagne[]).map((c) => [c.dossier_id, c])
   );
   const sansCampagne = listeDossiers.filter((d) => !campagneParDossier.has(d.id));
+  const { data: facture } = await supabase
+    .from("facturation_mois")
+    .select("id")
+    .eq("cabinet_id", cabinetId)
+    .eq("mois", mois)
+    .maybeSingle();
 
   const moisPrecedent = new Date(mois + "T00:00:00");
   moisPrecedent.setMonth(moisPrecedent.getMonth() - 1);
@@ -82,6 +89,9 @@ export default async function CabinetCampagnesPage({
               )}
             </Link>
             <span className="font-semibold">{moisLabel(mois)}</span>
+            {profile.role !== "collaborateur" && (
+              <FacturationMois mois={mois} dejaFige={Boolean(facture)} />
+            )}
             <Link href={versMois(moisSuivant)} className="text-blue-700 hover:underline">
               {moisLabel(
                 `${moisSuivant.getFullYear()}-${String(moisSuivant.getMonth() + 1).padStart(2, "0")}-01`

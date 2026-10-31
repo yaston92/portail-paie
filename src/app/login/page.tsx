@@ -25,8 +25,11 @@ export default function LoginPage() {
       password,
     });
     if (error) {
+      const msg = error.message.toLowerCase();
       setErreur(
-        "Identifiants incorrects. Vérifiez votre email et votre mot de passe."
+        msg.includes("confirm")
+          ? "Confirmez d'abord votre adresse : ouvrez le lien reçu par email."
+          : "Identifiants incorrects. Vérifiez votre email et votre mot de passe."
       );
       setChargement(false);
       return;

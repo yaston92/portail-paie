@@ -5,7 +5,8 @@ import { getCabinetActif, peutAdminCabinet } from "@/lib/cabinet";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { journaliser } from "@/lib/audit";
 import { envoyerEmail, gabaritEmail, styleBoutonEmail } from "@/lib/email";
-import { hrefEmail, lienActivation } from "@/lib/lien-activation";
+import { hrefEmail } from "@/lib/lien-activation";
+import { creerLien48h, MENTION_LIEN_48H } from "@/lib/lien-duree";
 import { inviterOuReinviterClient } from "@/lib/acces-client";
 import type { CabinetRoleMembre } from "@/lib/types";
 
@@ -32,27 +33,6 @@ function appUrlBase(): string {
     /\/$/,
     ""
   );
-}
-
-function lienDepuisGenerateLink(
-  linkData: unknown,
-  appUrl: string,
-  type: "invite" | "magiclink"
-): string {
-  const hashed =
-    (linkData as { properties?: { hashed_token?: string }; hashed_token?: string })
-      .properties?.hashed_token ||
-    (linkData as { hashed_token?: string }).hashed_token;
-
-  if (hashed) {
-    return lienActivation(appUrl, "/definir-mot-de-passe", hashed, type);
-  }
-
-  const action =
-    (linkData as { properties?: { action_link?: string } }).properties?.action_link ||
-    (linkData as { action_link?: string }).action_link;
-  if (!action) throw new Error("Lien d'activation introuvable.");
-  return action;
 }
 
 async function envoyerInvitationCabinet(opts: {
@@ -86,6 +66,7 @@ async function envoyerInvitationCabinet(opts: {
         (opts.reinvitation
           ? `Voici un nouveau lien pour définir votre mot de passe et accéder à votre espace ${roleLabel}.`
           : `Vous êtes invité(e) en tant que <strong>${roleLabel}</strong>. Cliquez ci-dessous pour créer votre mot de passe.`) +
+        ` ${MENTION_LIEN_48H}` +
         `<br/><br/><a href="${hrefEmail(opts.lien)}" style="${styleBoutonEmail()}">Définir mon mot de passe</a>` +
         `<p style="font-size:12px;color:#666;word-break:break-all;margin-top:16px">${hrefEmail(opts.lien)}</p>`
     ),
@@ -283,7 +264,7 @@ export async function POST(request: Request) {
         );
       }
 
-      const lien = lienDepuisGenerateLink(linkData, appUrl, "invite");
+      const lien = creerLien48h(appUrl, { email, type: "invite" });
       await envoyerInvitationCabinet({
         email,
         nom,
@@ -348,7 +329,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const lien = lienDepuisGenerateLink(linkData, appUrl, "magiclink");
+    const lien = creerLien48h(appUrl, { email, type: "magiclink" });
     await envoyerInvitationCabinet({
       email,
       nom,

@@ -8,7 +8,7 @@ import { telechargerFichier } from "@/lib/storage";
  * RLS : cabinet (portefeuille), client du dossier, ou le salarié pour les siens.
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const profile = await getApiProfile();
@@ -28,9 +28,11 @@ export async function GET(
   }
 
   const contenu = await telechargerFichier("bulletins", bulletin.chemin);
+  const inline = new URL(request.url).searchParams.get("inline") === "1";
+  const disposition = inline ? "inline" : "attachment";
   return new NextResponse(new Uint8Array(contenu), {
     headers: {
-      "Content-Disposition": `attachment; filename="${encodeURIComponent(bulletin.nom_fichier)}"`,
+      "Content-Disposition": `${disposition}; filename="${encodeURIComponent(bulletin.nom_fichier)}"`,
       "Content-Type": "application/pdf",
       "Cache-Control": "private, no-store",
     },

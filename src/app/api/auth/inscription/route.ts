@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { envoyerEmail, gabaritEmail } from "@/lib/email";
+import { envoyerEmail, gabaritEmail, styleBoutonEmail } from "@/lib/email";
+import { hrefEmail } from "@/lib/lien-activation";
+import { creerLien48h, MENTION_LIEN_48H } from "@/lib/lien-duree";
 import { ipClient, tropSouvent } from "@/lib/limite";
 
 const schema = z.object({
@@ -50,14 +52,21 @@ export async function POST(request: Request) {
     `Cabinet ${prenomTrim || nomTrim}`.trim() ||
     "Mon cabinet";
 
-  const { data, error } = await admin.auth.admin.createUser({
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(
+    /\/$/,
+    ""
+  );
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: "signup",
     email: emailNorm,
     password,
-    email_confirm: true,
-    user_metadata: {
-      role: "directeur",
-      nom: nomTrim,
-      prenom: prenomTrim,
+    options: {
+      data: {
+        role: "directeur",
+        nom: nomTrim,
+        prenom: prenomTrim,
+      },
+      redirectTo: `${appUrl}/auth/confirmer-compte`,
     },
   });
 
@@ -85,6 +94,7 @@ export async function POST(request: Request) {
     .from("profiles")
     .update({ role: "directeur", nom: nomTrim, prenom: prenomTrim })
     .eq("id", userId);
+  await admin.from("profiles").update({ email_confirme: false }).eq("id", userId);
 
   const { data: cabinet, error: cabErr } = await admin
     .from("cabinets")
@@ -116,23 +126,21 @@ export async function POST(request: Request) {
     );
   }
 
+  const lien = creerLien48h(appUrl, { email: emailNorm, type: "signup" });
   const prenomNom = `${prenomTrim} ${nomTrim}`.trim();
   await envoyerEmail({
     to: [{ email: emailNorm, name: prenomNom }],
-    subject: "Bienvenue sur ETIK Paie",
+    subject: "Confirmez votre compte ETIK Paie",
     html: gabaritEmail(
-      "Compte directeur créé",
+      "Confirmez votre adresse",
       `Bonjour ${prenomTrim || "Madame, Monsieur"},<br/><br/>` +
-        `Votre compte <strong>directeur</strong> a bien été créé sur ETIK Paie, ` +
-        `avec le cabinet « ${cabinetNom} ». ` +
-        `Vous pouvez vous connecter et inviter des administrateurs ou collaborateurs.`,
-      "/login"
+        `Pour ouvrir le cabinet « ${cabinetNom} », confirmez votre adresse email. ${MENTION_LIEN_48H}<br/><br/>` +
+        `<a href="${hrefEmail(lien)}" style="${styleBoutonEmail()}">Confirmer mon compte</a>`
     ),
   });
 
   return NextResponse.json({
     ok: true,
-    userId,
-    cabinet_id: cabinet.id,
+    verification: true,
   });
 }

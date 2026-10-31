@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { AutresEspaces } from "@/components/autres-espaces";
 import { AppShell, type NavItem } from "@/components/app-shell";
 
 export default async function ClientLayout({
@@ -18,10 +19,20 @@ export default async function ClientLayout({
     .eq("user_id", profile.id)
     .eq("lu", false);
 
+  let planningActif = false;
+  if (profile.dossier_id) {
+    const { data: dossier, error } = await supabase
+      .from("dossiers")
+      .select("planning_actif")
+      .eq("id", profile.dossier_id)
+      .maybeSingle();
+    planningActif = !error && dossier?.planning_actif === true;
+  }
+
   const items: NavItem[] = [
     { href: "/client", label: "Accueil" },
     { href: "/client/salaries", label: "Salariés" },
-    { href: "/client/planning", label: "Planning" },
+    ...(planningActif ? [{ href: "/client/planning", label: "Planning" }] : []),
     { href: "/client/embauches", label: "Embauches" },
     { href: "/client/conges", label: "Congés" },
     { href: "/client/arrets-maladie", label: "Arrêts maladie" },
@@ -39,14 +50,7 @@ export default async function ClientLayout({
       items={items}
       notificationsNonLues={count ?? 0}
     >
-      {profile.espace_origine && (
-        <a
-          href="/espace/cabinet"
-          className="mb-4 block rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
-        >
-          Vous consultez l&apos;espace client de ce compte. Revenir à l&apos;espace cabinet →
-        </a>
-      )}
+      <AutresEspaces />
       {children}
     </AppShell>
   );

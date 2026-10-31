@@ -1,9 +1,11 @@
+import { redirect } from "next/navigation";
 import { ROLES_CABINET } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
 import {
   peutAdminCabinet,
   requireCabinetContext,
 } from "@/lib/cabinet";
+import { AutresEspaces } from "@/components/autres-espaces";
 import { AppShell, type NavItem } from "@/components/app-shell";
 import { CabinetSwitcher } from "@/components/cabinet-switcher";
 
@@ -16,6 +18,7 @@ export default async function CabinetLayout({
     ROLES_CABINET,
     { allowEmptyDirecteur: true }
   );
+  if (profile.email_confirme === false) redirect("/verifier-email");
 
   const supabase = await createClient();
   const { count } = await supabase
@@ -74,14 +77,7 @@ export default async function CabinetLayout({
       notificationsNonLues={count ?? 0}
       compteHref="/cabinet/compte"
     >
-      {profile.dossier_client_id && !profile.espace_origine && (
-        <a
-          href="/espace/client"
-          className="mb-4 block rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950"
-        >
-          Ce compte a aussi un espace client. Ouvrir l&apos;espace client →
-        </a>
-      )}
+      <AutresEspaces />
       {children}
     </AppShell>
   );

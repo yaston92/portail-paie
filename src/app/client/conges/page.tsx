@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardBody, PageHeader } from "@/components/ui";
+import { CalendrierConges } from "@/components/calendrier-conges";
 import { DemandesCongeListe } from "@/components/demandes-conge-liste";
 import type { DemandeConge } from "@/lib/types";
 
@@ -23,8 +24,13 @@ export default async function ClientCongesPage() {
     <div className="space-y-6">
       <PageHeader
         titre="Demandes de congés"
-        sousTitre="Validez ou refusez les demandes de vos salariés"
+        sousTitre="Le calendrier montre le jour du mois. Validez ou refusez ensuite."
       />
+      <Card>
+        <CardBody>
+          <CalendrierConges demandes={demandes} />
+        </CardBody>
+      </Card>
       <Card>
         <CardBody>
           <DemandesCongeListe initiales={demandes} />

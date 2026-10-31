@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { ChampMotDePasse } from "@/components/champ-mot-de-passe";
 import { Alert, Button, Card, CardBody, Label } from "@/components/ui";
+import { createClient } from "@/lib/supabase/client";
 import { toastSuccess } from "@/lib/toast";
 
 export function ChangerMotDePasseForm() {
@@ -31,12 +32,24 @@ export function ChangerMotDePasseForm() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ password }),
     });
-    const json = (await res.json().catch(() => ({}))) as { error?: string };
-    setChargement(false);
+    const json = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      access_token?: string;
+      refresh_token?: string;
+    };
     if (!res.ok) {
+      setChargement(false);
       setErreur(json.error ?? "Enregistrement impossible.");
       return;
     }
+    if (json.access_token && json.refresh_token) {
+      const supabase = createClient();
+      await supabase.auth.setSession({
+        access_token: json.access_token,
+        refresh_token: json.refresh_token,
+      });
+    }
+    setChargement(false);
     toastSuccess("Mot de passe enregistré");
     router.push("/");
     router.refresh();

@@ -1,20 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 import { ChampMotDePasse } from "@/components/champ-mot-de-passe";
 import { Alert, Button, Card, CardBody, Input, Label } from "@/components/ui";
 
 export default function InscriptionPage() {
-  const router = useRouter();
   const [prenom, setPrenom] = useState("");
   const [nom, setNom] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [cabinetNom, setCabinetNom] = useState("");
   const [erreur, setErreur] = useState<string | null>(null);
+  const [envoye, setEnvoye] = useState(false);
   const [chargement, setChargement] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -35,7 +33,6 @@ export default function InscriptionPage() {
     });
     const json = (await res.json().catch(() => ({}))) as {
       error?: string;
-      cabinet_id?: string;
     };
     if (!res.ok) {
       setErreur(json.error ?? "Inscription impossible.");
@@ -43,26 +40,8 @@ export default function InscriptionPage() {
       return;
     }
 
-    if (json.cabinet_id) {
-      await fetch("/api/cabinet/actif", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ cabinet_id: json.cabinet_id }),
-      });
-    }
-
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
-    if (error) {
-      setErreur("Compte créé, mais connexion échouée. Connectez-vous depuis l'accueil.");
-      setChargement(false);
-      return;
-    }
-    router.push("/cabinet");
-    router.refresh();
+    setEnvoye(true);
+    setChargement(false);
   }
 
   return (
@@ -76,6 +55,12 @@ export default function InscriptionPage() {
         </div>
         <Card>
           <CardBody>
+            {envoye ? (
+              <Alert variant="success">
+                Un email de confirmation a été envoyé. Ouvrez le lien pour activer
+                votre cabinet, puis connectez-vous.
+              </Alert>
+            ) : (
             <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
               {erreur && <Alert variant="error">{erreur}</Alert>}
               <div>
@@ -130,12 +115,13 @@ export default function InscriptionPage() {
               <Button type="submit" className="w-full" disabled={chargement}>
                 {chargement ? "Création…" : "S'inscrire"}
               </Button>
-              <p className="text-center text-sm">
-                <Link href="/login" className="text-blue-700 hover:underline">
-                  Déjà un compte ? Se connecter
-                </Link>
-              </p>
             </form>
+            )}
+            <p className="text-center text-sm mt-4">
+              <Link href="/login" className="text-blue-700 hover:underline">
+                Déjà un compte ? Se connecter
+              </Link>
+            </p>
           </CardBody>
         </Card>
         <p className="text-center text-xs text-gray-500 mt-4">

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Alert, Button, Input, Textarea } from "@/components/ui";
+import { ZoneFichier } from "@/components/zone-fichier";
+import { Alert, Button, Textarea } from "@/components/ui";
 import { formatDateTime } from "@/lib/format";
 import { toastError, toastSuccess } from "@/lib/toast";
 
@@ -102,7 +103,7 @@ export function NotesThread({
           className="min-h-16"
         />
         <div className="flex flex-wrap items-center gap-3">
-          <Input name="piece" type="file" className="max-w-xs" />
+          <ZoneFichier name="piece" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/*" />
           <Button type="submit" variant="secondary" disabled={envoi}>
             {envoi ? "Envoi…" : "Envoyer la note"}
           </Button>

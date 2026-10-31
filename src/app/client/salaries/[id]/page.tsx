@@ -59,6 +59,12 @@ export default async function ClientSalarieDetailPage({
 
   if (!data) notFound();
   const s = data as Salarie;
+  const { data: dossierPlanning, error: errPlanning } = await supabase
+    .from("dossiers")
+    .select("planning_actif")
+    .eq("id", profile.dossier_id!)
+    .maybeSingle();
+  const planningActif = !errPlanning && dossierPlanning?.planning_actif === true;
   const arrets = (arretsData ?? []) as ArretMaladie[];
   const voisins = (voisinsData ?? []) as { id: string; nom: string; prenom: string }[];
   const indexVoisin = voisins.findIndex((v) => v.id === s.id);
@@ -126,8 +132,12 @@ export default async function ClientSalarieDetailPage({
             />
           </div>
 
+          {planningActif && (
           <div className="border-t border-gray-100 pt-6">
             <p className="text-sm font-medium mb-2">Horaires de travail</p>
+            <p className="text-xs text-gray-500 mb-2">
+              Ces heures servent au planning. Les congés se comptent en jours.
+            </p>
             <HorairesSalarieForm
               salarieId={s.id}
               dureeHebdo={s.duree_hebdo}
@@ -135,6 +145,7 @@ export default async function ClientSalarieDetailPage({
               compact
             />
           </div>
+          )}
 
           {s.statut === "actif" && !s.date_sortie && (
             <div className="border-t border-gray-100 pt-6">

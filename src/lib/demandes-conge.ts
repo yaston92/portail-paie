@@ -135,7 +135,15 @@ export async function synchroniserAbsencesDepuisDemande(opts: {
     .eq("id", opts.salarieId)
     .maybeSingle();
 
-  const horaires = normaliserHoraires(salarie?.horaires, salarie?.duree_hebdo);
+  const { data: dossier } = await admin
+    .from("dossiers")
+    .select("planning_actif")
+    .eq("id", opts.dossierId)
+    .maybeSingle();
+  const planning = dossier?.planning_actif === true;
+  const horaires = planning
+    ? normaliserHoraires(salarie?.horaires, salarie?.duree_hebdo)
+    : null;
 
   const parMois = new Map<string, string[]>();
   for (const jour of opts.jours) {
@@ -199,7 +207,9 @@ export async function synchroniserAbsencesDepuisDemande(opts: {
             dossier_id: opts.dossierId,
             jour,
             nature: "cp",
-            heures: Math.max(heuresDuJour(horaires, jour, salarie?.duree_hebdo), 0.5),
+            heures: planning
+              ? Math.max(heuresDuJour(horaires, jour, salarie?.duree_hebdo), 0.5)
+              : 7,
           },
           { onConflict: "saisie_id,jour" }
         )
@@ -208,6 +218,27 @@ export async function synchroniserAbsencesDepuisDemande(opts: {
   }
 
   return pending;
+}
+
+/** Retire les absences CP posées pour ces jours (annulation ou modification). */
+export async function retirerAbsencesCp(opts: {
+  salarieId: string;
+  jours: string[];
+}): Promise<void> {
+  if (opts.jours.length === 0) return;
+  const admin = createAdminClient();
+  const { data: saisies } = await admin
+    .from("saisies_variables")
+    .select("id")
+    .eq("salarie_id", opts.salarieId);
+  const ids = (saisies ?? []).map((s) => s.id as string);
+  if (ids.length === 0) return;
+  await admin
+    .from("absences")
+    .delete()
+    .in("saisie_id", ids)
+    .in("jour", opts.jours)
+    .eq("nature", "cp");
 }
 
 /** Injecte les CP validés d’un dossier dans la campagne du mois (absences variables). */

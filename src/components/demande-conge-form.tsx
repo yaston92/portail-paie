@@ -25,6 +25,9 @@ export function DemandeCongeForm({
   const [fin, setFin] = useState("");
   const [commentaire, setCommentaire] = useState("");
   const [demandes, setDemandes] = useState(demandesInitiales);
+  const [edition, setEdition] = useState<string | null>(null);
+  const [editDebut, setEditDebut] = useState("");
+  const [editFin, setEditFin] = useState("");
   const [erreur, setErreur] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -64,6 +67,33 @@ export function DemandeCongeForm({
       setFin("");
       setCommentaire("");
       toastSuccess("Demande envoyée : employeur notifié");
+      router.refresh();
+    } catch {
+      setErreur("Réseau indisponible.");
+      toastError("Réseau indisponible.");
+    }
+    setBusy(false);
+  }
+
+  async function modifier(id: string) {
+    setBusy(true);
+    setErreur(null);
+    try {
+      const res = await fetch(`/api/salarie/demandes-conge/${id}/modifier`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date_debut: editDebut, date_fin: editFin }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { error?: string } & DemandeConge;
+      if (!res.ok) {
+        setErreur(json.error || "Modification impossible");
+        toastError(json.error || "Modification impossible");
+        setBusy(false);
+        return;
+      }
+      setDemandes((prev) => prev.map((d) => (d.id === id ? (json as DemandeConge) : d)));
+      setEdition(null);
+      toastSuccess("Modification envoyée : l'employeur doit à nouveau accepter");
       router.refresh();
     } catch {
       setErreur("Réseau indisponible.");
@@ -159,15 +189,39 @@ export function DemandeCongeForm({
                   {d.commentaire ? ` : ${d.commentaire}` : ""}
                 </p>
               </div>
-              {d.statut === "en_attente" && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={busy}
-                  onClick={() => annuler(d.id)}
-                >
-                  Annuler
-                </Button>
+              {d.statut !== "annulee" && (
+                <div className="flex flex-wrap gap-2">
+                  {edition === d.id ? (
+                    <>
+                      <DatePickerField label="Du" value={editDebut} onChange={setEditDebut} />
+                      <DatePickerField label="Au" value={editFin} onChange={setEditFin} />
+                      <Button type="button" disabled={busy} onClick={() => void modifier(d.id)}>
+                        Envoyer la modification
+                      </Button>
+                    </>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={busy}
+                      onClick={() => {
+                        setEdition(d.id);
+                        setEditDebut(d.date_debut);
+                        setEditFin(d.date_fin);
+                      }}
+                    >
+                      Modifier
+                    </Button>
+                  )}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={busy}
+                    onClick={() => void annuler(d.id)}
+                  >
+                    Supprimer
+                  </Button>
+                </div>
               )}
             </li>
           ))}

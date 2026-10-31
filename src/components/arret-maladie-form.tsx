@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { ZoneFichier } from "@/components/zone-fichier";
 import { Alert, Button, Input, Label } from "@/components/ui";
 import { formatDate } from "@/lib/format";
 import { toastError, toastSuccess } from "@/lib/toast";
@@ -92,9 +93,8 @@ export function ArretMaladieSalarieForm({
         </div>
         <div className="sm:col-span-2">
           <Label>Justificatif (PDF, JPG ou PNG) *</Label>
-          <Input
+          <ZoneFichier
             name="justificatif"
-            type="file"
             required
             accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
           />
@@ -225,9 +225,8 @@ export function ArretMaladieClientForm({
         </div>
         <div className="sm:col-span-2">
           <Label>Justificatif (PDF, JPG, PNG) : optionnel</Label>
-          <Input
+          <ZoneFichier
             name="justificatif"
-            type="file"
             accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
           />
         </div>

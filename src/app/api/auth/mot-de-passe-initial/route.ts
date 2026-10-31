@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { getApiProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -50,5 +51,25 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({ ok: true });
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anon || !profile.email) {
+    return NextResponse.json({ ok: true });
+  }
+  const client = createClient(url, anon, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: session, error: signError } = await client.auth.signInWithPassword({
+    email: profile.email,
+    password,
+  });
+  if (signError || !session.session) {
+    return NextResponse.json({ ok: true });
+  }
+
+  return NextResponse.json({
+    ok: true,
+    access_token: session.session.access_token,
+    refresh_token: session.session.refresh_token,
+  });
 }

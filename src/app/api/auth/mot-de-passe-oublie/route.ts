@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { envoyerEmail, gabaritEmail, styleBoutonEmail } from "@/lib/email";
-import { hrefEmail, lienActivation } from "@/lib/lien-activation";
+import { hrefEmail } from "@/lib/lien-activation";
+import { creerLien48h, MENTION_LIEN_48H } from "@/lib/lien-duree";
 import { ipClient, tropSouvent } from "@/lib/limite";
 
 const schema = z.object({
@@ -79,13 +80,13 @@ export async function POST(request: Request) {
   const mobileRedirect = parsed.data.redirect_to?.trim();
   if (mobileRedirect && redirectAutorise(mobileRedirect)) {
     const base = mobileRedirect.split("?")[0]!.replace(/\/$/, "");
-    lienApp = `${base}?token_hash=${encodeURIComponent(hashed)}&type=recovery`;
+    lienApp = creerLien48h(appUrl, { email, type: "recovery", dest: base });
   }
-  const lienWeb = lienActivation(appUrl, "/definir-mot-de-passe", hashed, "recovery");
+  const lienWeb = creerLien48h(appUrl, { email, type: "recovery" });
   const lienPrincipal = lienApp || lienWeb;
 
   const corps =
-    `Bonjour,<br/><br/>Vous avez demandé à réinitialiser votre mot de passe.` +
+    `Bonjour,<br/><br/>Vous avez demandé à réinitialiser votre mot de passe. ${MENTION_LIEN_48H}` +
     `<br/><br/><a href="${hrefEmail(lienPrincipal)}" style="${styleBoutonEmail()}">Choisir un nouveau mot de passe</a>` +
     (lienApp
       ? `<p style="font-size:13px;margin-top:16px">Si l’app ne s’ouvre pas, utilisez ce lien dans le navigateur :<br/><a href="${hrefEmail(lienWeb)}">${hrefEmail(lienWeb)}</a></p>`

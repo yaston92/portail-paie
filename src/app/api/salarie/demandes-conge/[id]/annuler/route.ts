@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getApiProfile } from "@/lib/auth";
 import { journaliser } from "@/lib/audit";
+import { joursOuvres, retirerAbsencesCp } from "@/lib/demandes-conge";
+import { formatDate } from "@/lib/format";
+import { destinatairesClient, notifier } from "@/lib/notify";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { DemandeConge } from "@/lib/types";
 
@@ -24,11 +27,14 @@ export async function POST(
   if (!d || d.salarie_id !== profile.salarie_id) {
     return NextResponse.json({ error: "Demande introuvable" }, { status: 404 });
   }
-  if (d.statut !== "en_attente") {
-    return NextResponse.json(
-      { error: "Seule une demande en attente peut être annulée." },
-      { status: 400 }
-    );
+  if (d.statut === "annulee") {
+    return NextResponse.json({ error: "Cette demande est déjà annulée." }, { status: 400 });
+  }
+  if (d.statut === "validee") {
+    await retirerAbsencesCp({
+      salarieId: d.salarie_id,
+      jours: joursOuvres(d.date_debut, d.date_fin),
+    });
   }
 
   const { data: updated, error } = await admin
@@ -44,6 +50,14 @@ export async function POST(
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  const nom = `${profile.prenom} ${profile.nom}`.trim() || profile.email;
+  await notifier({
+    userIds: await destinatairesClient(d.dossier_id),
+    titre: "Congés retirés",
+    corps: `${nom} a supprimé sa demande du ${formatDate(d.date_debut)} au ${formatDate(d.date_fin)}.`,
+    lien: "/client/conges",
+  });
 
   await journaliser({
     userId: profile.id,

@@ -42,19 +42,69 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
   return appliquerEspaceClient(profile);
 });
 
-/** Compte cabinet qui a aussi un dossier client : le cookie ou l'en-tête ouvre cet espace. */
+/**
+ * Un même compte peut ouvrir le cabinet, un espace client ou un espace salarié
+ * d'une des sociétés auxquelles il est rattaché. Le cookie choisit l'espace.
+ */
 async function appliquerEspaceClient(profile: Profile): Promise<Profile> {
-  if (!profile.dossier_client_id || !isCabinetRole(profile.role)) return profile;
   const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
   const espace =
-    cookieStore.get(COOKIE_ESPACE)?.value || headerStore.get(HEADER_ESPACE);
-  if (espace !== "client") return profile;
-  return {
-    ...profile,
-    role: "client",
-    dossier_id: profile.dossier_client_id,
-    espace_origine: profile.role,
-  };
+    cookieStore.get(COOKIE_ESPACE)?.value || headerStore.get(HEADER_ESPACE) || "";
+
+  if (espace.startsWith("salarie:")) {
+    const salarieId = espace.slice("salarie:".length);
+    if (!salarieId) return profile;
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("profil_espaces")
+      .select("dossier_id, salarie_id")
+      .eq("profile_id", profile.id)
+      .eq("salarie_id", salarieId)
+      .maybeSingle();
+    const propre =
+      profile.role === "salarie" && profile.salarie_id === salarieId
+        ? { dossier_id: profile.dossier_id, salarie_id: profile.salarie_id }
+        : null;
+    const lien = data ?? propre;
+    if (!lien?.salarie_id || !lien.dossier_id) return profile;
+    if (profile.role === "salarie" && profile.salarie_id === lien.salarie_id) return profile;
+    return {
+      ...profile,
+      role: "salarie",
+      salarie_id: lien.salarie_id,
+      dossier_id: lien.dossier_id,
+      espace_origine: profile.role,
+    };
+  }
+
+  if (espace === "client" || espace.startsWith("client:")) {
+    const demande = espace.startsWith("client:") ? espace.slice("client:".length) : "";
+    const dossierId = demande || profile.dossier_client_id || null;
+    if (!dossierId) return profile;
+    if (profile.role === "client" && profile.dossier_id === dossierId) return profile;
+    const autorise =
+      dossierId === profile.dossier_client_id ||
+      (profile.role === "client" && profile.dossier_id === dossierId);
+    if (!autorise) {
+      const supabase = await createClient();
+      const { data } = await supabase
+        .from("profil_espaces")
+        .select("dossier_id")
+        .eq("profile_id", profile.id)
+        .eq("kind", "client")
+        .eq("dossier_id", dossierId)
+        .maybeSingle();
+      if (!data) return profile;
+    }
+    return {
+      ...profile,
+      role: "client",
+      dossier_id: dossierId,
+      espace_origine: profile.role,
+    };
+  }
+
+  return profile;
 }
 
 /**

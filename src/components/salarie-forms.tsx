@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { ZoneFichier } from "@/components/zone-fichier";
 import { Alert, Button, Input, Label, Select } from "@/components/ui";
 import { MOTIFS_SORTIE } from "@/lib/sortie";
 import { CONTRATS, contratATerme, type ContratType } from "@/lib/types";
@@ -321,7 +322,7 @@ export function ImportExcelForm({ dossierId }: { dossierId: string }) {
           )}
         </Alert>
       )}
-      <Input name="fichier" type="file" accept=".xlsx" required />
+      <ZoneFichier name="fichier" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
       <Button type="submit" variant="secondary" disabled={envoi}>
         {envoi ? "Import en cours…" : "Importer"}
       </Button>
@@ -388,12 +389,11 @@ export function SortieSalarieForm({
       {variant === "cabinet" && (
         <div>
           <Label>Documents de fin de contrat *</Label>
-          <Input
+          <ZoneFichier
             name="documents"
-            type="file"
             multiple
             required
-            accept=".pdf,.jpg,.jpeg,.png"
+            accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
           />
           <p className="text-xs text-gray-500 mt-1">
             Solde de tout compte, certificat de travail, attestation France

@@ -62,6 +62,8 @@ export interface Profile {
   salarie_id: string | null;
   /** Mot de passe provisoire posé par le cabinet : à changer à la connexion. */
   doit_changer_mot_de_passe?: boolean;
+  /** false tant que le directeur n'a pas ouvert le lien d'inscription. */
+  email_confirme?: boolean;
   created_at: string;
 }
 
@@ -90,6 +92,8 @@ export interface Dossier {
   convention_collective: string | null;
   collaborateur_id: string | null;
   archive: boolean;
+  /** Calendrier de présence, à activer par le client. */
+  planning_actif?: boolean;
   created_at: string;
 }
 

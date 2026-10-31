@@ -1,14 +1,29 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
+import { PlanningOption } from "@/components/planning-option";
 import { SupprimerCompte } from "@/components/supprimer-compte";
 import { Card, CardBody, PageHeader } from "@/components/ui";
 
 export default async function ClientParametresPage() {
-  await requireRole(["client"]);
+  const profile = await requireRole(["client"]);
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("dossiers")
+    .select("planning_actif")
+    .eq("id", profile.dossier_id!)
+    .maybeSingle();
+  const planning = !error && data?.planning_actif === true;
 
   return (
     <div className="max-w-xl space-y-6">
       <PageHeader titre="Paramètres" sousTitre="Votre compte" />
+
+      <Card>
+        <CardBody>
+          <PlanningOption actif={planning} />
+        </CardBody>
+      </Card>
 
       <Link href="/compte" className="block">
         <Card className="transition-colors hover:border-blue-300 hover:bg-blue-50/40">

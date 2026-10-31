@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, moisDepuisParam, moisLabel } from "@/lib/format";
 import { Card, CardBody, EmptyState, PageHeader } from "@/components/ui";
+import { ActionsBulletin } from "@/components/actions-bulletin";
 import type { Bulletin } from "@/lib/types";
 
 export default async function SalarieBulletinsMoisPage({
@@ -56,12 +57,7 @@ export default async function SalarieBulletinsMoisPage({
                       publié le {formatDate(b.published_at.slice(0, 10))}
                     </span>
                   </span>
-                  <a
-                    href={`/api/bulletins/${b.id}/telecharger`}
-                    className="text-blue-700 hover:underline whitespace-nowrap"
-                  >
-                    Télécharger
-                  </a>
+                  <ActionsBulletin id={b.id} />
                 </li>
               ))}
             </ul>

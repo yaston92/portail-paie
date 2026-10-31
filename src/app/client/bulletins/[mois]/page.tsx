@@ -9,6 +9,7 @@ import {
   EmptyState,
   PageHeader,
 } from "@/components/ui";
+import { ActionsBulletin } from "@/components/actions-bulletin";
 import type { Bulletin } from "@/lib/types";
 
 export default async function ClientBulletinsMoisPage({
@@ -76,12 +77,7 @@ export default async function ClientBulletinsMoisPage({
                   className="py-2 flex items-center justify-between gap-3"
                 >
                   <span>{b.nom_fichier}</span>
-                  <a
-                    href={`/api/bulletins/${b.id}/telecharger`}
-                    className="text-blue-700 hover:underline whitespace-nowrap"
-                  >
-                    Télécharger
-                  </a>
+                  <ActionsBulletin id={b.id} />
                 </li>
               ))}
             </ul>

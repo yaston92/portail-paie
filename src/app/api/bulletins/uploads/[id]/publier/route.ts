@@ -140,21 +140,37 @@ export async function POST(
       }
     }
 
-    if (cpAcquis !== null || cpPris !== null || cpRestant !== null) {
-      await admin.from("soldes_cp").upsert({
-        salarie_id: salarie.id,
-        dossier_id: upload.dossier_id,
-        acquis: cpAcquis,
-        pris: cpPris,
-        restant: cpRestant,
-        acquis_n1: cpAcquisN1,
-        acquis_n: cpAcquisN,
-        pris_n1: cpPrisN1,
-        pris_n: cpPrisN,
-        source: "extraction",
-        mois_reference: upload.mois,
-        updated_at: new Date().toISOString(),
-      });
+    const aDesCp =
+      cpAcquis !== null ||
+      cpPris !== null ||
+      cpRestant !== null ||
+      cpAcquisN1 !== null ||
+      cpAcquisN !== null ||
+      cpPrisN1 !== null ||
+      cpPrisN !== null;
+    if (aDesCp) {
+      const restant =
+        cpRestant ??
+        (cpAcquis !== null && cpPris !== null
+          ? Math.round((cpAcquis - cpPris) * 100) / 100
+          : null);
+      await admin.from("soldes_cp").upsert(
+        {
+          salarie_id: salarie.id,
+          dossier_id: upload.dossier_id,
+          acquis: cpAcquis,
+          pris: cpPris,
+          restant,
+          acquis_n1: cpAcquisN1,
+          acquis_n: cpAcquisN,
+          pris_n1: cpPrisN1,
+          pris_n: cpPrisN,
+          source: "extraction",
+          mois_reference: upload.mois,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "salarie_id" }
+      );
     }
 
     // Notification du salarié (sauf opposition au bulletin dématérialisé)

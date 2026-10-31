@@ -62,13 +62,19 @@ export async function destinatairesCabinet(dossierId: string): Promise<string[]>
 /** Comptes client d'un dossier. */
 export async function destinatairesClient(dossierId: string): Promise<string[]> {
   const admin = createAdminClient();
-  const [{ data: clients }, { data: lies }] = await Promise.all([
+  const [{ data: clients }, { data: lies }, { data: espaces }] = await Promise.all([
     admin.from("profiles").select("id").eq("role", "client").eq("dossier_id", dossierId),
     admin.from("profiles").select("id").eq("dossier_client_id", dossierId),
+    admin
+      .from("profil_espaces")
+      .select("profile_id")
+      .eq("kind", "client")
+      .eq("dossier_id", dossierId),
   ]);
   const ids = new Set<string>();
   for (const c of clients ?? []) ids.add(c.id);
   for (const c of lies ?? []) ids.add(c.id);
+  for (const e of espaces ?? []) ids.add(e.profile_id as string);
   return [...ids];
 }
 
@@ -79,16 +85,40 @@ export async function destinatairesClientsParDossier(
   const map = new Map<string, string[]>();
   if (dossierIds.length === 0) return map;
   const admin = createAdminClient();
-  const { data } = await admin
-    .from("profiles")
-    .select("id, dossier_id")
-    .eq("role", "client")
-    .in("dossier_id", dossierIds);
+  const [{ data }, { data: lies }, { data: espaces }] = await Promise.all([
+    admin
+      .from("profiles")
+      .select("id, dossier_id")
+      .eq("role", "client")
+      .in("dossier_id", dossierIds),
+    admin
+      .from("profiles")
+      .select("id, dossier_client_id")
+      .in("dossier_client_id", dossierIds),
+    admin
+      .from("profil_espaces")
+      .select("profile_id, dossier_id")
+      .eq("kind", "client")
+      .in("dossier_id", dossierIds),
+  ]);
   for (const p of data ?? []) {
     if (!p.dossier_id) continue;
     const liste = map.get(p.dossier_id) ?? [];
     liste.push(p.id);
     map.set(p.dossier_id, liste);
+  }
+  for (const p of lies ?? []) {
+    if (!p.dossier_client_id) continue;
+    const liste = map.get(p.dossier_client_id) ?? [];
+    if (!liste.includes(p.id)) liste.push(p.id);
+    map.set(p.dossier_client_id, liste);
+  }
+  if (!espaces) return map;
+  for (const e of espaces) {
+    if (!e.dossier_id) continue;
+    const liste = map.get(e.dossier_id) ?? [];
+    if (!liste.includes(e.profile_id)) liste.push(e.profile_id);
+    map.set(e.dossier_id, liste);
   }
   return map;
 }
@@ -140,23 +170,55 @@ async function envoyerPush(
       .from("push_tokens")
       .select("token")
       .in("user_id", userIds);
-    if (error || !data?.length) return;
+    if (error || !data?.length) {
+      if (error) console.error("[push] lecture jetons:", error.message);
+      return;
+    }
     const messages = data.map((row) => ({
       to: row.token as string,
       title: titre,
-      body: corps,
+      body: corps.slice(0, 180),
       data: { lien: lien ?? null },
       sound: "default",
+      priority: "high",
+      channelId: "etik",
     }));
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      "Accept-Encoding": "gzip, deflate",
+      "Content-Type": "application/json",
+    };
+    const tokenExpo = process.env.EXPO_ACCESS_TOKEN?.trim();
+    if (tokenExpo) headers.Authorization = `Bearer ${tokenExpo}`;
+
     for (let i = 0; i < messages.length; i += 100) {
-      await fetch("https://exp.host/--/api/v2/push/send", {
+      const lot = messages.slice(i, i + 100);
+      const res = await fetch("https://exp.host/--/api/v2/push/send", {
         method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(messages.slice(i, i + 100)),
+        headers,
+        body: JSON.stringify(lot),
       });
+      const json = (await res.json().catch(() => null)) as {
+        data?: { status?: string; message?: string; details?: { error?: string } }[];
+        errors?: { message?: string }[];
+      } | null;
+      if (!res.ok) {
+        console.error("[push] Expo a refusé l'envoi:", res.status, json);
+        continue;
+      }
+      const morts: string[] = [];
+      (json?.data ?? []).forEach((ticket, index) => {
+        if (ticket.status === "error") {
+          console.error("[push] ticket:", ticket.message, ticket.details?.error);
+          if (ticket.details?.error === "DeviceNotRegistered") {
+            const to = lot[index]?.to;
+            if (to) morts.push(to);
+          }
+        }
+      });
+      if (morts.length > 0) {
+        await admin.from("push_tokens").delete().in("token", morts);
+      }
     }
   } catch (e) {
     console.error("[push]", e);

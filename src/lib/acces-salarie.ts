@@ -1,7 +1,9 @@
 import { randomBytes } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { envoyerEmail, gabaritEmail, styleBoutonEmail } from "@/lib/email";
-import { hrefEmail, lienActivation } from "@/lib/lien-activation";
+import { hrefEmail } from "@/lib/lien-activation";
+import { creerLien48h, MENTION_LIEN_48H } from "@/lib/lien-duree";
+import { ajouterEspaceSalarie } from "@/lib/espaces";
 import { journaliser } from "@/lib/audit";
 
 export type AccesSalarieStatut = "aucun" | "invitation_en_attente" | "actif";
@@ -16,27 +18,6 @@ export interface AccesSalarieInfo {
 
 function appUrlBase(): string {
   return (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000").replace(/\/$/, "");
-}
-
-function lienDepuisGenerateLink(
-  linkData: unknown,
-  appUrl: string,
-  type: "invite" | "recovery" | "magiclink"
-): string {
-  const hashed =
-    (linkData as { properties?: { hashed_token?: string }; hashed_token?: string })
-      .properties?.hashed_token ||
-    (linkData as { hashed_token?: string }).hashed_token;
-
-  if (hashed) {
-    return lienActivation(appUrl, "/definir-mot-de-passe", hashed, type);
-  }
-
-  const action =
-    (linkData as { properties?: { action_link?: string } }).properties?.action_link ||
-    (linkData as { action_link?: string }).action_link;
-  if (!action) throw new Error("Lien d'activation introuvable.");
-  return action;
 }
 
 export async function getAccesSalarie(salarieId: string): Promise<AccesSalarieInfo> {
@@ -203,11 +184,36 @@ export async function inviterOuReinviterSalarie(opts: {
   const deja =
     existants?.find((p) => p.email?.toLowerCase() === email) ?? existants?.[0];
 
-  if (deja && deja.role !== "salarie") {
-    throw new Error("Cet email correspond à un compte non-salarié.");
-  }
-  if (deja && deja.salarie_id && deja.salarie_id !== opts.salarieId) {
-    throw new Error("Cet email est déjà rattaché à un autre salarié.");
+  if (
+    deja &&
+    (deja.role !== "salarie" || (deja.salarie_id && deja.salarie_id !== opts.salarieId))
+  ) {
+    await ajouterEspaceSalarie({
+      profileId: deja.id,
+      salarieId: opts.salarieId,
+      dossierId: opts.dossierId,
+    });
+    const envoye = await envoyerEmail({
+      to: [{ email, name: `${prenom} ${nom}`.trim() }],
+      subject: "Un espace salarié a été ajouté : ETIK Paie",
+      html: gabaritEmail(
+        "Espace salarié ajouté",
+        `Bonjour ${prenom || ""},<br/><br/>` +
+          `Votre compte peut maintenant ouvrir l'espace salarié de <strong>${prenom} ${nom}</strong>. ` +
+          `Connectez-vous avec votre mot de passe habituel, puis choisissez cet espace.` +
+          `<br/><br/><a href="${hrefEmail(`${appUrl}/login`)}" style="${styleBoutonEmail()}">Ouvrir dans le navigateur</a>` +
+          `<br/><br/><a href="etikpaie://login" style="${styleBoutonEmail()}">Ouvrir l'application</a>`
+      ),
+    });
+    await journaliser({
+      userId: opts.actorUserId,
+      action: "invitation_salarie",
+      cibleType: "salarie",
+      cibleId: opts.salarieId,
+      dossierId: opts.dossierId,
+      details: { email, mode: "espace_ajoute", emailEnvoye: envoye },
+    });
+    return { ok: true, mode: "reinvitation", userId: deja.id };
   }
 
   const meta = {
@@ -252,7 +258,7 @@ export async function inviterOuReinviterSalarie(opts: {
     });
     if (linkError) throw new Error("Échec de l'invitation : " + linkError.message);
 
-    const lien = lienDepuisGenerateLink(linkData, appUrl, "recovery");
+    const lien = creerLien48h(appUrl, { email, type: "recovery" });
     await envoyerLienActivation({
       email,
       prenom,
@@ -306,7 +312,7 @@ export async function inviterOuReinviterSalarie(opts: {
   });
   if (linkError) throw new Error("Impossible de régénérer le lien : " + linkError.message);
 
-  const lien = lienDepuisGenerateLink(linkData, appUrl, "recovery");
+  const lien = creerLien48h(appUrl, { email, type: "recovery" });
   await envoyerLienActivation({ email, prenom, nom, lien, appUrl });
 
   await journaliser({
@@ -340,6 +346,7 @@ async function envoyerLienActivation(opts: {
     html: gabaritEmail(
       "Activez votre compte",
       `Bonjour ${opts.prenom || opts.nom},<br/><br/>Voici un lien pour définir votre mot de passe et accéder à votre espace salarié (bulletins, soldes…).` +
+        `<br/><br/>${MENTION_LIEN_48H}` +
         `<br/><br/><a href="${hrefEmail(opts.lien)}" style="${styleBoutonEmail()}">Définir mon mot de passe</a>` +
         `<p style="font-size:12px;color:#666;word-break:break-all;margin-top:16px">${hrefEmail(opts.lien)}</p>`
     ),
@@ -447,7 +454,11 @@ export async function demanderChangementEmailSalarie(opts: {
     throw new Error("Impossible de préparer le lien d'activation.");
   }
 
-  const lien = lienActivation(appUrl, "/auth/confirmer-email", hashed, "email_change");
+  const lien = creerLien48h(appUrl, {
+    email: emailActuel,
+    type: "email_change",
+    nouveau: nouvelEmail,
+  });
   const prenom = salarie.prenom || "";
   const nom = salarie.nom || "Salarié";
 
@@ -458,7 +469,7 @@ export async function demanderChangementEmailSalarie(opts: {
       "Activer votre nouvel email",
       `Bonjour${prenom ? ` ${prenom}` : ""},` +
         `<br/><br/>Votre employeur a demandé à utiliser <strong>${nouvelEmail}</strong> comme nouvelle adresse de connexion sur ETIK Paie.` +
-        `<br/><br/>Cliquez sur le bouton ci-dessous pour activer cette adresse. Tant que vous n'avez pas confirmé, votre adresse actuelle (<strong>${emailActuel}</strong>) reste active.` +
+        `<br/><br/>Cliquez sur le bouton ci-dessous pour activer cette adresse. ${MENTION_LIEN_48H} Tant que vous n'avez pas confirmé, votre adresse actuelle (<strong>${emailActuel}</strong>) reste active.` +
         `<br/><br/><a href="${hrefEmail(lien)}" style="${styleBoutonEmail()}">Activer mon nouvel email</a>` +
         `<p style="font-size:12px;color:#666;margin-top:12px">Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>`
     ),

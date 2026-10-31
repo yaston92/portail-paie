@@ -114,7 +114,7 @@ export async function synchroniserSoldeDepuisDernierBulletin(
 
   const { data: upserted, error } = await admin
     .from("soldes_cp")
-    .upsert(row)
+    .upsert(row, { onConflict: "salarie_id" })
     .select("*")
     .maybeSingle();
 

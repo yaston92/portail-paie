@@ -336,7 +336,15 @@ function ChampPiece({
         className="sr-only"
         onChange={(e) => setNomFichier(e.target.files?.[0]?.name ?? null)}
       />
-      <div className="flex flex-wrap gap-2">
+      <div
+        className="flex flex-wrap gap-2 rounded-lg border border-dashed border-gray-300 p-2"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          const file = e.dataTransfer.files?.[0];
+          if (file && inputRef.current) poserFichier(inputRef.current, file);
+        }}
+      >
         <label className="inline-flex cursor-pointer items-center rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium hover:bg-gray-50">
           Prendre une photo
           <input

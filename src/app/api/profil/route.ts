@@ -7,7 +7,8 @@ import {
   gabaritEmail,
   styleBoutonEmail,
 } from "@/lib/email";
-import { hrefEmail, lienActivation } from "@/lib/lien-activation";
+import { hrefEmail } from "@/lib/lien-activation";
+import { creerLien48h, MENTION_LIEN_48H } from "@/lib/lien-duree";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { supprimerCompteUtilisateur } from "@/lib/supprimer-compte";
@@ -131,16 +132,25 @@ export async function PATCH(request: Request) {
     const mobileRedirect = body.data.redirect_to?.trim();
     if (mobileRedirect && redirectAutorise(mobileRedirect)) {
       const base = mobileRedirect.split("?")[0]!.replace(/\/$/, "");
-      lienApp = `${base}?token_hash=${encodeURIComponent(hashed)}&type=email_change`;
+      lienApp = creerLien48h(appUrl, {
+        email: profile.email,
+        type: "email_change",
+        nouveau: email,
+        dest: base,
+      });
     }
-    const lienWeb = lienActivation(appUrl, "/auth/confirmer-email", hashed, "email_change");
+    const lienWeb = creerLien48h(appUrl, {
+      email: profile.email,
+      type: "email_change",
+      nouveau: email,
+    });
     const lienPrincipal = lienApp || lienWeb;
 
     const prenomAffiche = (prenom || profile.prenom || "").trim();
     const corps =
       `Bonjour${prenomAffiche ? ` ${prenomAffiche}` : ""},` +
       `<br/><br/>Vous avez demandé à utiliser <strong>${email}</strong> comme nouvelle adresse de connexion sur ETIK Paie.` +
-      `<br/><br/>Cliquez sur le bouton ci-dessous pour activer cette adresse. Tant que vous n'avez pas confirmé, votre adresse actuelle (<strong>${profile.email}</strong>) reste active.` +
+      `<br/><br/>Cliquez sur le bouton ci-dessous pour activer cette adresse. ${MENTION_LIEN_48H} Tant que vous n'avez pas confirmé, votre adresse actuelle (<strong>${profile.email}</strong>) reste active.` +
       `<br/><br/><a href="${hrefEmail(lienPrincipal)}" style="${styleBoutonEmail()}">Activer mon nouvel email</a>` +
       (lienApp
         ? `<p style="font-size:13px;margin-top:16px">Si l’app ne s’ouvre pas, utilisez ce lien dans le navigateur :<br/><a href="${hrefEmail(lienWeb)}">${hrefEmail(lienWeb)}</a></p>`

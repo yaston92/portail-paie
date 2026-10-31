@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ZoneFichier } from "@/components/zone-fichier";
 import { Alert, Button, Input, Label, Select } from "@/components/ui";
 import { moisCourant } from "@/lib/format";
 import { toastError, toastSuccess } from "@/lib/toast";
@@ -102,7 +103,7 @@ export function BulletinsUploadForm({
         </div>
         <div>
           <Label>PDF global du logiciel de paie *</Label>
-          <Input name="fichier" type="file" accept=".pdf" required />
+          <ZoneFichier name="fichier" accept=".pdf,application/pdf" required />
         </div>
       </div>
       <Button type="submit" disabled={envoi}>

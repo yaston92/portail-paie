@@ -1,5 +1,6 @@
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { AutresEspaces } from "@/components/autres-espaces";
 import { AppShell, type NavItem } from "@/components/app-shell";
 
 export default async function SalarieLayout({
@@ -30,6 +31,7 @@ export default async function SalarieLayout({
       items={items}
       notificationsNonLues={count ?? 0}
     >
+      <AutresEspaces />
       {children}
     </AppShell>
   );
