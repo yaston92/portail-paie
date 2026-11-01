@@ -22,7 +22,7 @@ function redirigerApp(dest: string, hashed: string, type: string) {
   });
 }
 
-/** Ouvre un lien email de moins de 48 h et redirige avec un jeton Supabase tout neuf. */
+/** Ouvre un lien email de moins de 7 jours et redirige avec un jeton Supabase tout neuf. */
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const lu = lireLien48h(url.searchParams.get("j"));

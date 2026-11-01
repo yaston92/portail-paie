@@ -1,9 +1,9 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
 /** Durée de vie des liens envoyés par email (invitation, mot de passe, confirmation). */
-export const DUREE_LIEN_SEC = 48 * 60 * 60;
+export const DUREE_LIEN_SEC = 7 * 24 * 60 * 60;
 
-export const MENTION_LIEN_48H = "Ce lien reste valable 48 heures.";
+export const MENTION_LIEN_48H = "Ce lien reste valable 7 jours.";
 
 export type TypeLienDurable =
   | "recovery"

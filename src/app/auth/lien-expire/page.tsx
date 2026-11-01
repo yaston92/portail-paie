@@ -8,7 +8,7 @@ export default function LienExpirePage() {
         <CardBody className="space-y-3">
           <h1 className="text-lg font-semibold">Lien expiré</h1>
           <p className="text-sm text-gray-600">
-            Ce lien n&apos;est plus valable. Les liens envoyés par email durent 48 heures.
+            Ce lien n&apos;est plus valable. Les liens envoyés par email durent 7 jours.
             Demandez un nouvel envoi.
           </p>
           <Link href="/mot-de-passe-oublie" className="text-sm text-blue-700 hover:underline">
