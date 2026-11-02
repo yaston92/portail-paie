@@ -3,6 +3,7 @@ import { pathToFileURL } from "url";
 import { DOMMatrix, DOMPoint, DOMRect } from "@napi-rs/canvas/geometry.js";
 import { PDFDocument } from "pdf-lib";
 import { racineNir } from "@/lib/format";
+import { lireTexteDessine } from "@/lib/ocr-bulletins";
 import type { Salarie } from "@/lib/types";
 
 /**
@@ -10,26 +11,38 @@ import type { Salarie } from "@/lib/types";
  * dans la fonction Vercel : sans ces classes, l'import échoue et le bulletin
  * est enregistré sans texte, donc sans salarié.
  */
-function assurerGeometriePdf() {
+/** Prépare pdfjs. Le canvas natif sert à redessiner les PDF dont les lettres sont des courbes. */
+async function assurerMoteurPdf(): Promise<boolean> {
   const g = globalThis as unknown as Record<string, unknown>;
   if (typeof g.DOMMatrix !== "function") g.DOMMatrix = DOMMatrix;
   if (typeof g.DOMPoint !== "function") g.DOMPoint = DOMPoint;
   if (typeof g.DOMRect !== "function") g.DOMRect = DOMRect;
-  if (typeof g.Path2D !== "function") {
-    g.Path2D = class Path2D {
-      constructor(_path?: unknown) {}
-      addPath() {}
-      closePath() {}
-      moveTo() {}
-      lineTo() {}
-      bezierCurveTo() {}
-      quadraticCurveTo() {}
-      arc() {}
-      arcTo() {}
-      ellipse() {}
-      rect() {}
-      roundRect() {}
-    };
+  try {
+    const canvas = await import("@napi-rs/canvas");
+    g.Path2D = canvas.Path2D;
+    g.DOMMatrix = canvas.DOMMatrix;
+    g.DOMPoint = canvas.DOMPoint;
+    g.DOMRect = canvas.DOMRect;
+    return true;
+  } catch (e) {
+    console.error("[pdf] canvas natif indisponible:", e);
+    if (typeof g.Path2D !== "function") {
+      g.Path2D = class Path2D {
+        constructor(_path?: unknown) {}
+        addPath() {}
+        closePath() {}
+        moveTo() {}
+        lineTo() {}
+        bezierCurveTo() {}
+        quadraticCurveTo() {}
+        arc() {}
+        arcTo() {}
+        ellipse() {}
+        rect() {}
+        roundRect() {}
+      };
+    }
+    return false;
   }
 }
 
@@ -151,7 +164,7 @@ export async function extraireTextesPages(pdf: Buffer): Promise<string[]> {
   if (!estPdfValide(pdf)) {
     throw new Error("NOT_A_PDF");
   }
-  assurerGeometriePdf();
+  const renduPossible = await assurerMoteurPdf();
 
   const essais: Record<string, unknown>[] = [
     {
@@ -204,6 +217,15 @@ export async function extraireTextesPages(pdf: Buffer): Promise<string[]> {
       derniereErreur = e;
     } finally {
       await loadingTask.destroy().catch(() => undefined);
+    }
+  }
+
+  if (renduPossible) {
+    try {
+      const dessines = await lireTexteDessine(pdf);
+      if (dessines?.some((t) => t.trim())) return dessines;
+    } catch (e) {
+      console.error("[pdf] lecture des lettres dessinées:", e);
     }
   }
 

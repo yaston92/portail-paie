@@ -52,12 +52,24 @@ const nextConfig: NextConfig = {
     "packing-competitors-hygiene-ski.trycloudflare.com",
     "*.trycloudflare.com",
   ],
-  // pdfjs-dist doit rester external (fonts + legacy ESM Node)
-  serverExternalPackages: ["pdfjs-dist"],
-  // geometry.js est du JS pur : pdfjs en a besoin pour lire le texte des bulletins.
+  // pdfjs, le canvas natif et tesseract restent hors du bundle (binaire, wasm).
+  serverExternalPackages: ["pdfjs-dist", "@napi-rs/canvas", "tesseract.js", "tesseract.js-core"],
+  // Le canvas linux et le français de tesseract servent aux PDF dont les lettres sont dessinées.
   outputFileTracingIncludes: {
-    "/api/bulletins/**/*": ["./node_modules/@napi-rs/canvas/geometry.js"],
-    "/api/salarie/solde": ["./node_modules/@napi-rs/canvas/geometry.js"],
+    "/api/bulletins/**/*": [
+      "./node_modules/@napi-rs/canvas/geometry.js",
+      "./node_modules/@napi-rs/canvas-linux-x64-gnu/**/*",
+      "./node_modules/tesseract.js/**/*",
+      "./node_modules/tesseract.js-core/**/*",
+      "./assets/tessdata/**/*",
+    ],
+    "/api/salarie/solde": [
+      "./node_modules/@napi-rs/canvas/geometry.js",
+      "./node_modules/@napi-rs/canvas-linux-x64-gnu/**/*",
+      "./node_modules/tesseract.js/**/*",
+      "./node_modules/tesseract.js-core/**/*",
+      "./assets/tessdata/**/*",
+    ],
   },
   // Uploads embauche (PDF / photos) : défaut proxy = 10 Mo → corps tronqué → FormData cassé
   experimental: {
