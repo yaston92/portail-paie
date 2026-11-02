@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Alert, Button, Input, Label, Textarea } from "@/components/ui";
 import { CalendrierAbsences } from "@/components/calendrier-absences";
-import { formaterHeuresMinutes, nombreVersSaisieFr, parseNombreFr } from "@/lib/format";
+import { lireHeuresMinutes, partiesHeures } from "@/lib/format";
 import { toastError, toastSuccess } from "@/lib/toast";
 import type { Absence, SaisieMode, SaisieVariables } from "@/lib/types";
 
@@ -35,9 +35,9 @@ export function SaisieSalarie({
   const [netMontant, setNetMontant] = useState(
     saisie.net_montant?.toString() ?? ""
   );
-  const [heuresSupp, setHeuresSupp] = useState(
-    nombreVersSaisieFr(saisie.heures_supp)
-  );
+  const initialHeures = partiesHeures(saisie.heures_supp);
+  const [heures, setHeures] = useState(initialHeures.heures);
+  const [minutes, setMinutes] = useState(initialHeures.minutes);
   const [note, setNote] = useState(saisie.note ?? "");
   const [etat, setEtat] = useState<"idle" | "envoi" | "ok" | "erreur">("idle");
   const [message, setMessage] = useState("");
@@ -53,6 +53,17 @@ export function SaisieSalarie({
       setMessage("Indiquez la rémunération nette à verser.");
       return;
     }
+    let heuresSupp: number | null = null;
+    if (mode === "variables") {
+      const lu = lireHeuresMinutes(heures, minutes);
+      if (lu.erreur) {
+        setEtat("erreur");
+        setMessage(lu.erreur);
+        toastError(lu.erreur);
+        return;
+      }
+      heuresSupp = lu.valeur;
+    }
     setEtat("envoi");
     const supabase = createClient();
     const { error } = await supabase
@@ -60,8 +71,7 @@ export function SaisieSalarie({
       .update({
         mode,
         net_montant: mode === "net" ? parseFloat(netMontant) : null,
-        heures_supp:
-          mode === "variables" ? parseNombreFr(heuresSupp) : null,
+        heures_supp: mode === "variables" ? heuresSupp : null,
         note: note.trim() || null,
         updated_at: new Date().toISOString(),
       })
@@ -141,21 +151,32 @@ export function SaisieSalarie({
 
       {mode === "variables" && (
         <div className="space-y-4">
-          <div className="max-w-xs">
+          <div>
             <Label>Heures supplémentaires</Label>
-            <Input
-              type="text"
-              inputMode="decimal"
-              placeholder="2,5"
-              value={heuresSupp}
-              onChange={(e) => setHeuresSupp(e.target.value)}
-              disabled={disabled}
-            />
-            {parseNombreFr(heuresSupp) != null && (
-              <p className="text-xs text-gray-500 mt-1">
-                {formaterHeuresMinutes(parseNombreFr(heuresSupp)!)}
-              </p>
-            )}
+            <div className="flex gap-3 max-w-xs">
+              <div className="flex-1">
+                <Label className="text-xs text-gray-500">Heures</Label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="2"
+                  value={heures}
+                  onChange={(e) => setHeures(e.target.value)}
+                  disabled={disabled}
+                />
+              </div>
+              <div className="flex-1">
+                <Label className="text-xs text-gray-500">Minutes</Label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="30"
+                  value={minutes}
+                  onChange={(e) => setMinutes(e.target.value)}
+                  disabled={disabled}
+                />
+              </div>
+            </div>
           </div>
           <div>
             <Label>Absences et congés du mois</Label>

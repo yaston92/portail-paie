@@ -83,6 +83,39 @@ export function formatHeures(heures: number | null | undefined): string {
   return formaterHeuresMinutes(Number(heures));
 }
 
+/** Heures déjà enregistrées, séparées pour les deux cases du formulaire. */
+export function partiesHeures(heures: number | null | undefined): {
+  heures: string;
+  minutes: string;
+} {
+  if (heures == null || !Number.isFinite(Number(heures)) || Number(heures) <= 0) {
+    return { heures: "", minutes: "" };
+  }
+  const total = Math.round(Number(heures) * 60);
+  return {
+    heures: String(Math.floor(total / 60)),
+    minutes: String(total % 60).padStart(2, "0"),
+  };
+}
+
+/** Heures et minutes écrites telles quelles. Les minutes vont de 0 à 59. */
+export function lireHeuresMinutes(
+  heures: string,
+  minutes: string
+): { valeur: number | null; erreur: string | null } {
+  const hBrut = heures.trim();
+  const mBrut = minutes.trim();
+  if (!hBrut && !mBrut) return { valeur: null, erreur: null };
+  if ((hBrut && !/^\d+$/.test(hBrut)) || (mBrut && !/^\d+$/.test(mBrut))) {
+    return { valeur: null, erreur: "Indiquez les heures et les minutes en nombres entiers." };
+  }
+  const h = hBrut ? Number(hBrut) : 0;
+  const m = mBrut ? Number(mBrut) : 0;
+  if (m > 59) return { valeur: null, erreur: "Les minutes vont de 0 à 59." };
+  if (h === 0 && m === 0) return { valeur: null, erreur: null };
+  return { valeur: Math.round((h + m / 60) * 100) / 100, erreur: null };
+}
+
 /** « 2,5 » ou « 2.5 » → 2.5. Vide ou invalide → null. */
 export function parseNombreFr(valeur: string): number | null {
   const brut = valeur.trim().replace(/\s/g, "").replace(",", ".");

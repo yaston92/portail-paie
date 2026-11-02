@@ -9,7 +9,7 @@ import {
   totauxAbsences,
 } from "@/lib/campagne";
 import { journaliser } from "@/lib/audit";
-import { moisFichier, moisLabel } from "@/lib/format";
+import { formaterHeuresMinutes, moisFichier, moisLabel } from "@/lib/format";
 import { composerNoteAvecSortie } from "@/lib/sortie";
 import { NATURE_LABELS, type Absence, type AbsenceNature, type Campagne } from "@/lib/types";
 
@@ -119,7 +119,7 @@ export async function GET(
       salarie.prenom,
       modeLabel,
       saisie?.mode === "net" ? Number(saisie.net_montant) : "",
-      saisie?.heures_supp ? Number(saisie.heures_supp) : "",
+      saisie?.heures_supp ? formaterHeuresMinutes(Number(saisie.heures_supp)) : "",
       ...NATURES.flatMap((n) => {
         const t = totaux.get(n);
         return [t?.jours ?? "", t?.heures ?? ""];
