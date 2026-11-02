@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { envoyerEmail, gabaritEmail } from "@/lib/email";
+import { envoyerPushWeb } from "@/lib/push-web";
 
 interface NotifyParams {
   userIds: string[];
@@ -167,6 +168,7 @@ export async function notifier({
   if (error) console.error("[notif] enregistrement:", titre, error.message);
 
   await envoyerPush(ids, titre, corps, lien);
+  await envoyerPushWeb(ids, titre, corps, lien);
 
   if (email) {
     const { data: profiles } = await admin

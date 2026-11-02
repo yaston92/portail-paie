@@ -4,6 +4,7 @@ import { after } from "next/server";
 import { getProfile, isCabinetRole, roleHome } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { EtatNotification } from "@/components/etat-notification";
 import { SupprimerNotification } from "@/components/supprimer-notification";
 import { Card, CardBody, EmptyState, PageHeader } from "@/components/ui";
 import { formatDateTime } from "@/lib/format";
@@ -68,10 +69,8 @@ export default async function NotificationsPage() {
         titre="Notifications"
         sousTitre={
           profile.role === "client"
-            ? "Les notifications de plus de 30 jours sont retirées automatiquement."
-            : isCabinetRole(profile.role)
-              ? "Supprimez les notifications au fur et à mesure."
-              : undefined
+            ? "Indiquez si chaque notification est traitée ou pas encore. Celles de plus de 30 jours sont retirées automatiquement."
+            : "Indiquez si chaque notification est traitée ou pas encore."
         }
         actions={
           <Link
@@ -102,7 +101,8 @@ export default async function NotificationsPage() {
                           {texteNotif(n.corps)}
                         </p>
                       )}
-                      <div className="flex items-center gap-3 mt-1">
+                      <div className="flex flex-wrap items-center gap-3 mt-2">
+                        <EtatNotification id={n.id} traite={n.traite === true} />
                         {n.lien && (
                           <Link
                             href={n.lien}

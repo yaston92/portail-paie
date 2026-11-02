@@ -34,6 +34,7 @@ const securityHeaders = [
       "img-src 'self' data: blob:",
       "font-src 'self' data:",
       `connect-src ${connectSrc}`,
+      "worker-src 'self'",
       "frame-src 'self' blob:",
       "object-src 'self' blob:",
       "frame-ancestors 'none'",
@@ -54,7 +55,7 @@ const nextConfig: NextConfig = {
     "*.trycloudflare.com",
   ],
   // pdfjs, le canvas natif et tesseract restent hors du bundle (binaire, wasm).
-  serverExternalPackages: ["pdfjs-dist", "@napi-rs/canvas", "tesseract.js", "tesseract.js-core"],
+  serverExternalPackages: ["pdfjs-dist", "@napi-rs/canvas", "tesseract.js", "tesseract.js-core", "web-push"],
   // Le canvas linux et le français de tesseract servent aux PDF dont les lettres sont dessinées.
   outputFileTracingIncludes: {
     "/api/bulletins/**/*": [

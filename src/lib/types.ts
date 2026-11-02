@@ -313,6 +313,8 @@ export interface Notification {
   corps: string | null;
   lien: string | null;
   lu: boolean;
+  /** false = encore à traiter, true = traité. */
+  traite?: boolean;
   created_at: string;
 }
 

@@ -3,6 +3,7 @@ import { listerEspaces } from "@/lib/espaces";
 import { createClient } from "@/lib/supabase/server";
 import { AutresEspaces } from "@/components/autres-espaces";
 import { AppShell, type NavItem } from "@/components/app-shell";
+import { compterATraiter } from "@/lib/notifications-compte";
 
 export default async function SalarieLayout({
   children,
@@ -12,12 +13,8 @@ export default async function SalarieLayout({
   const profile = await requireRole(["salarie"]);
 
   const supabase = await createClient();
-  const [{ count }] = await Promise.all([
-    supabase
-      .from("notifications")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", profile.id)
-      .eq("lu", false),
+  const [count] = await Promise.all([
+    compterATraiter(supabase, profile.id),
     listerEspaces(profile).catch(() => []),
   ]);
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { ActivationPushNavigateur } from "@/components/activation-push-navigateur";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -179,6 +180,7 @@ export function AppShell({
 
   return (
     <div className="flex-1 flex flex-col min-h-screen bg-gray-100">
+      <ActivationPushNavigateur />
       <header className="bg-blue-800 text-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-14">
           <div className="flex items-center gap-3 min-w-0">

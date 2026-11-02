@@ -10,6 +10,7 @@ import {
 import { listerEspaces } from "@/lib/espaces";
 import { AutresEspaces } from "@/components/autres-espaces";
 import { AppShell, type NavItem } from "@/components/app-shell";
+import { compterATraiter } from "@/lib/notifications-compte";
 import { CabinetSwitcher } from "@/components/cabinet-switcher";
 
 export default async function CabinetLayout({
@@ -21,12 +22,8 @@ export default async function CabinetLayout({
   if (profile.email_confirme === false) redirect("/verifier-email");
 
   const supabase = await createClient();
-  const [{ count }, cabinets, cabinet] = await Promise.all([
-    supabase
-      .from("notifications")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", profile.id)
-      .eq("lu", false),
+  const [count, cabinets, cabinet] = await Promise.all([
+    compterATraiter(supabase, profile.id),
     getCabinetsMembre(profile.id),
     getCabinetActif(),
     listerEspaces(profile).catch(() => []),
