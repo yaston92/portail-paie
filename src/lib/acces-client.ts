@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { envoyerEmail, gabaritEmail, styleBoutonEmail } from "@/lib/email";
+import { boutonEmail, envoyerEmail, gabaritEmail } from "@/lib/email";
 import { hrefEmail } from "@/lib/lien-activation";
 import { ajouterEspaceClient } from "@/lib/espaces";
 import { journaliser } from "@/lib/audit";
@@ -81,11 +81,11 @@ function messageBienvenueClient(nom: string, renouvellement: boolean): string {
 
 function boutonsAcces(appUrl: string): string {
   const web = `${appUrl}/login`;
-  const app = "etikpaie://login";
+  const app = `${appUrl}/ouvrir?vers=login`;
   return (
-    `<br/><br/><a href="${hrefEmail(web)}" style="${styleBoutonEmail()}">Ouvrir dans le navigateur</a>` +
-    `<br/><br/><a href="${hrefEmail(app)}" style="${styleBoutonEmail()}">Ouvrir l'application</a>` +
-    `<br/><span style="font-size:12px;color:#666;word-break:break-all">${hrefEmail(web)}</span>`
+    boutonEmail(web, "Ouvrir dans le navigateur") +
+    boutonEmail(app, "Ouvrir l'application") +
+    `<p style="font-size:12px;color:#666;word-break:break-all">${hrefEmail(web)}</p>`
   );
 }
 

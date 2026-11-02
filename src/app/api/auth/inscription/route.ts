@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { envoyerEmail, gabaritEmail, styleBoutonEmail } from "@/lib/email";
+import { boutonEmail, envoyerEmail, gabaritEmail } from "@/lib/email";
 import { hrefEmail } from "@/lib/lien-activation";
 import { creerLien48h, MENTION_LIEN_48H } from "@/lib/lien-duree";
 import { ipClient, tropSouvent } from "@/lib/limite";
@@ -135,7 +135,7 @@ export async function POST(request: Request) {
       "Confirmez votre adresse",
       `Bonjour ${prenomTrim || "Madame, Monsieur"},<br/><br/>` +
         `Pour ouvrir le cabinet « ${cabinetNom} », confirmez votre adresse email. ${MENTION_LIEN_48H}<br/><br/>` +
-        `<a href="${hrefEmail(lien)}" style="${styleBoutonEmail()}">Confirmer mon compte</a>`
+        boutonEmail(lien, "Confirmer mon compte")
     ),
   });
 

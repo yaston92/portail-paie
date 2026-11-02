@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { envoyerEmail, gabaritEmail, styleBoutonEmail } from "@/lib/email";
+import { boutonEmail, envoyerEmail, gabaritEmail } from "@/lib/email";
 import { hrefEmail } from "@/lib/lien-activation";
 import { creerLien48h, MENTION_LIEN_48H } from "@/lib/lien-duree";
 import { ipClient, tropSouvent } from "@/lib/limite";
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
 
   const corps =
     `Bonjour,<br/><br/>Vous avez demandé à réinitialiser votre mot de passe. ${MENTION_LIEN_48H}` +
-    `<br/><br/><a href="${hrefEmail(lienPrincipal)}" style="${styleBoutonEmail()}">Choisir un nouveau mot de passe</a>` +
+    boutonEmail(lienPrincipal, "Choisir un nouveau mot de passe") +
     (lienApp
       ? `<p style="font-size:13px;margin-top:16px">Si l’app ne s’ouvre pas, utilisez ce lien dans le navigateur :<br/><a href="${hrefEmail(lienWeb)}">${hrefEmail(lienWeb)}</a></p>`
       : "") +

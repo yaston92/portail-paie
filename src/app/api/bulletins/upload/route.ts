@@ -1,27 +1,19 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { getApiProfile, cabinetPeutAccederDossier } from "@/lib/auth";
 import { refuserSansDroit } from "@/lib/droits-serveur";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { journaliser } from "@/lib/audit";
-import { dechiffrer } from "@/lib/crypto";
+import { analyserBulletinDepose } from "@/lib/analyser-bulletins";
+import { notifier } from "@/lib/notify";
 import { uploaderFichier } from "@/lib/storage";
-import {
-  compterPagesPdf,
-  detecterSegments,
-  estPdfValide,
-  extraireTextesPages,
-  normaliserPdf,
-  segmentsUnePageChacun,
-} from "@/lib/pdf-bulletins";
-import { salariesAttendus } from "@/lib/campagne";
+import { estPdfValide, normaliserPdf } from "@/lib/pdf-bulletins";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
 /**
  * Upload du PDF global des paies d'un dossier (cabinet).
- * Analyse immédiate : découpage en segments par salarié (frontières variables)
- * et extraction heuristique des soldes de CP, en vue de l'écran de contrôle.
+ * Le fichier est enregistré tout de suite. Le découpage continue ensuite,
+ * et une notification prévient quand il est prêt.
  */
 export async function POST(request: Request) {
   const profile = await getApiProfile(["admin_cabinet", "collaborateur"]);
@@ -64,79 +56,14 @@ export async function POST(request: Request) {
     magic: contenu.subarray(0, 8).toString("latin1"),
   });
 
-  // Analyse du PDF. Le nombre de pages vient du fichier, pas du texte lu.
-  let textesPages: string[];
-  let nbPages: number;
-  try {
-    nbPages = await compterPagesPdf(contenu);
-  } catch {
-    return NextResponse.json({ error: "PDF vide ou illisible." }, { status: 400 });
-  }
-  try {
-    textesPages = await extraireTextesPages(contenu);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "";
-    if (msg === "NOT_A_PDF") {
-      return NextResponse.json(
-        {
-          error:
-            "Ce fichier n'est pas un PDF valide (ou a été tronqué à l'envoi). Réessayez avec le .pdf exporté du logiciel de paie.",
-        },
-        { status: 400 }
-      );
-    }
-    console.error("[bulletins/upload] lecture PDF impossible:", {
-      name: fichier.name,
-      size: contenu.length,
-      error: e,
-    });
-    textesPages = [];
-  }
-  while (textesPages.length < nbPages) textesPages.push("");
-  if (textesPages.length > nbPages) textesPages = textesPages.slice(0, nbPages);
-  if (nbPages === 0) {
-    return NextResponse.json({ error: "PDF vide." }, { status: 400 });
-  }
-
   const admin = createAdminClient();
-  const salaries = await salariesAttendus(admin, dossierId, mois);
-  const ids = salaries.map((s) => s.id);
-  const { data: sensibles } =
-    ids.length > 0
-      ? await admin
-          .from("salaries_sensibles")
-          .select("salarie_id, nir_chiffre")
-          .in("salarie_id", ids)
-      : { data: [] as { salarie_id: string; nir_chiffre: string }[] };
-  const nirParId = new Map<string, string>();
-  for (const row of sensibles ?? []) {
-    try {
-      nirParId.set(row.salarie_id, dechiffrer(row.nir_chiffre));
-    } catch {
-      /* NIR illisible : l'appariement se fera par matricule ou nom */
-    }
-  }
-  const pourApparier = salaries.map((s) => ({
-    id: s.id,
-    nom: s.nom,
-    prenom: s.prenom,
-    matricule: s.matricule,
-    nir: nirParId.get(s.id) ?? null,
-  }));
-  const texteVide = textesPages.every((t) => !t.trim());
-  const segments =
-    texteVide && nbPages > 1
-      ? segmentsUnePageChacun(nbPages)
-      : detecterSegments(textesPages, pourApparier);
-
-  // Stockage du PDF global
   const { data: upload, error } = await admin
     .from("bulletin_uploads")
     .insert({
       dossier_id: dossierId,
       mois,
       chemin: "",
-      nb_pages: textesPages.length,
+      nb_pages: null,
       created_by: profile.id,
     })
     .select("id")
@@ -149,35 +76,29 @@ export async function POST(request: Request) {
   await uploaderFichier("bulletins", chemin, contenu, "application/pdf");
   await admin.from("bulletin_uploads").update({ chemin }).eq("id", upload.id);
 
-  await admin.from("bulletin_segments").insert(
-    segments.map((s) => ({
-      upload_id: upload.id,
-      page_debut: s.pageDebut,
-      page_fin: s.pageFin,
-      salarie_id: s.salarieId,
-      cp_acquis: s.cpAcquis,
-      cp_pris: s.cpPris,
-      cp_restant: s.cpRestant,
-      cp_acquis_n1: s.cpAcquisN1,
-      cp_acquis_n: s.cpAcquisN,
-      cp_pris_n1: s.cpPrisN1,
-      cp_pris_n: s.cpPrisN,
-      texte_apercu: s.texteApercu,
-    }))
-  );
-
-  await journaliser({
-    userId: profile.id,
-    action: "upload_pdf_bulletins",
-    cibleType: "bulletin_upload",
-    cibleId: upload.id,
-    dossierId,
-    details: {
-      pages: textesPages.length,
-      segments: segments.length,
-      non_apparies: segments.filter((s) => !s.salarieId).length,
-    },
+  const userId = profile.id;
+  after(async () => {
+    try {
+      await analyserBulletinDepose({
+        admin,
+        uploadId: upload.id,
+        dossierId,
+        mois,
+        userId,
+        contenu,
+      });
+    } catch (e) {
+      console.error("[bulletins/upload] découpage:", e);
+      await admin.from("bulletin_uploads").update({ nb_pages: 0 }).eq("id", upload.id);
+      await notifier({
+        userIds: [userId],
+        titre: "Découpage des bulletins impossible",
+        corps: "Le PDF a été reçu, mais le découpage n'a pas abouti. Déposez-le à nouveau.",
+        lien: "/cabinet/bulletins",
+        email: false,
+      });
+    }
   });
 
-  return NextResponse.json({ ok: true, id: upload.id });
+  return NextResponse.json({ ok: true, id: upload.id, en_cours: true });
 }

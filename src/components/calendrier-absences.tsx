@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { formaterDetailJoursAbsences } from "@/lib/campagne";
 import {
   NATURE_COLORS,
   NATURE_LABELS,
@@ -255,6 +256,7 @@ export function CalendrierAbsences({
               </li>
             ))}
           </ul>
+          <p className="text-gray-700">{formaterDetailJoursAbsences(absences)}</p>
         </div>
       )}
 

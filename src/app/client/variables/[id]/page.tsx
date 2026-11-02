@@ -11,7 +11,6 @@ import {
 } from "@/components/campagne-client-actions";
 import { NotesThread } from "@/components/notes-thread";
 import { SortieSalarieForm } from "@/components/salarie-forms";
-import { ArretMaladieClientForm } from "@/components/arret-maladie-form";
 import { labelMotifSortie } from "@/lib/sortie";
 import {
   Alert,
@@ -211,7 +210,7 @@ export default async function ClientCampagnePage({
                     </Link>
                   </div>
                   {peutSortir && (
-                    <details className="px-2 pb-1">
+                    <details className="px-2 pb-2">
                       <summary className="cursor-pointer text-[11px] font-normal text-gray-500">
                         Sortie
                       </summary>
@@ -219,20 +218,6 @@ export default async function ClientCampagnePage({
                         <SortieSalarieForm
                           salarieId={s.id}
                           variant="client"
-                          compact
-                        />
-                      </div>
-                    </details>
-                  )}
-                  {!verrouillee && s.statut === "actif" && (
-                    <details className="px-2 pb-2">
-                      <summary className="cursor-pointer text-[11px] font-normal text-gray-500">
-                        Arrêt maladie
-                      </summary>
-                      <div className="mt-2 max-w-md">
-                        <ArretMaladieClientForm
-                          salarieId={s.id}
-                          salarieNom={`${s.prenom} ${s.nom}`}
                           compact
                         />
                       </div>

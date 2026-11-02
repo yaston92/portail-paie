@@ -80,7 +80,32 @@ export function formatMontant(montant: number | null | undefined): string {
 
 export function formatHeures(heures: number | null | undefined): string {
   if (heures === null || heures === undefined) return "-";
-  return `${heures.toLocaleString("fr-FR")} h`;
+  return formaterHeuresMinutes(Number(heures));
+}
+
+/** « 2,5 » ou « 2.5 » → 2.5. Vide ou invalide → null. */
+export function parseNombreFr(valeur: string): number | null {
+  const brut = valeur.trim().replace(/\s/g, "").replace(",", ".");
+  if (!brut) return null;
+  const n = Number(brut);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.round(n * 100) / 100;
+}
+
+/** 2.5 → « 2 h 30 min ». */
+export function formaterHeuresMinutes(heures: number): string {
+  if (!Number.isFinite(heures) || heures <= 0) return "0 h";
+  const total = Math.round(heures * 60);
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  if (m === 0) return `${h} h`;
+  if (h === 0) return `${m} min`;
+  return `${h} h ${String(m).padStart(2, "0")} min`;
+}
+
+export function nombreVersSaisieFr(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(Number(n))) return "";
+  return String(n).replace(".", ",");
 }
 
 /** Nom de fichier bulletin : 'OPT - DUPONT Marie 09.2026.pdf' */

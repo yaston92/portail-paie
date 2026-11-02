@@ -73,16 +73,33 @@ export async function envoyerEmail({
   return true;
 }
 
+function urlAbsolueEmail(lien: string): string {
+  if (/^https?:\/\//i.test(lien)) return lien;
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
+  return `${appUrl}${lien.startsWith("/") ? lien : `/${lien}`}`;
+}
+
+/** Bouton dont toute la surface colorée est cliquable (pas seulement le texte). */
+export function boutonEmail(href: string, libelle: string): string {
+  const couleur = BRAND.primary;
+  const url = href.replace(/&/g, "&amp;");
+  return (
+    `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0">` +
+    `<tr><td bgcolor="${couleur}" style="border-radius:6px">` +
+    `<a href="${url}" style="${styleBoutonEmail()}">${libelle}</a>` +
+    `</td></tr></table>`
+  );
+}
+
 export function gabaritEmail(titre: string, corps: string, lien?: string): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
   const couleur = BRAND.primary;
   const bouton = lien
-    ? `<p style="margin:24px 0"><a href="${appUrl}${lien}" style="background:${couleur};color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none">Ouvrir le portail</a></p>`
+    ? boutonEmail(urlAbsolueEmail(lien), "Ouvrir le portail")
     : "";
   return `
-  <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#111">
+  <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#111;line-height:1.5">
     <h2 style="color:${couleur}">${titre}</h2>
-    <p>${corps}</p>
+    <div>${corps}</div>
     ${bouton}
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0" />
     <p style="color:#6b7280;font-size:12px">Message automatique du portail paie : merci de ne pas répondre directement à cet email.</p>
@@ -91,5 +108,5 @@ export function gabaritEmail(titre: string, corps: string, lien?: string): strin
 
 /** Style bouton CTA emails (couleur marque active). */
 export function styleBoutonEmail(): string {
-  return `background:${BRAND.primary};color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none`;
+  return `display:inline-block;background:${BRAND.primary};color:#ffffff;padding:12px 22px;border-radius:6px;text-decoration:none;font-weight:bold`;
 }

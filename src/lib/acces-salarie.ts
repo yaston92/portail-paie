@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { envoyerEmail, gabaritEmail, styleBoutonEmail } from "@/lib/email";
+import { boutonEmail, envoyerEmail, gabaritEmail } from "@/lib/email";
 import { hrefEmail } from "@/lib/lien-activation";
 import { creerLien48h, MENTION_LIEN_48H } from "@/lib/lien-duree";
 import { ajouterEspaceSalarie } from "@/lib/espaces";
@@ -177,8 +177,8 @@ export async function inviterOuReinviterSalarie(opts: {
         `Bonjour ${prenom || ""},<br/><br/>` +
           `Votre compte peut maintenant ouvrir l'espace salarié de <strong>${prenom} ${nom}</strong>. ` +
           `Connectez-vous avec votre mot de passe habituel, puis choisissez cet espace.` +
-          `<br/><br/><a href="${hrefEmail(`${appUrl}/login`)}" style="${styleBoutonEmail()}">Ouvrir dans le navigateur</a>` +
-          `<br/><br/><a href="etikpaie://login" style="${styleBoutonEmail()}">Ouvrir l'application</a>`
+          boutonEmail(`${appUrl}/login`, "Ouvrir dans le navigateur") +
+          boutonEmail(`${appUrl}/ouvrir?vers=login`, "Ouvrir l'application")
       ),
     });
     await journaliser({
@@ -323,7 +323,7 @@ async function envoyerLienActivation(opts: {
       "Activez votre compte",
       `Bonjour ${opts.prenom || opts.nom},<br/><br/>Voici un lien pour définir votre mot de passe et accéder à votre espace salarié (bulletins, soldes…).` +
         `<br/><br/>${MENTION_LIEN_48H}` +
-        `<br/><br/><a href="${hrefEmail(opts.lien)}" style="${styleBoutonEmail()}">Définir mon mot de passe</a>` +
+        boutonEmail(opts.lien, "Définir mon mot de passe") +
         `<p style="font-size:12px;color:#666;word-break:break-all;margin-top:16px">${hrefEmail(opts.lien)}</p>`
     ),
   });
@@ -446,7 +446,7 @@ export async function demanderChangementEmailSalarie(opts: {
       `Bonjour${prenom ? ` ${prenom}` : ""},` +
         `<br/><br/>Votre employeur a demandé à utiliser <strong>${nouvelEmail}</strong> comme nouvelle adresse de connexion sur ETIK Paie.` +
         `<br/><br/>Cliquez sur le bouton ci-dessous pour activer cette adresse. ${MENTION_LIEN_48H} Tant que vous n'avez pas confirmé, votre adresse actuelle (<strong>${emailActuel}</strong>) reste active.` +
-        `<br/><br/><a href="${hrefEmail(lien)}" style="${styleBoutonEmail()}">Activer mon nouvel email</a>` +
+        boutonEmail(lien, "Activer mon nouvel email") +
         `<p style="font-size:12px;color:#666;margin-top:12px">Si vous n'êtes pas à l'origine de cette demande, ignorez cet email.</p>`
     ),
   });

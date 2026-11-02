@@ -6,6 +6,7 @@ import { aLeDroit } from "@/lib/droits";
 import { createClient } from "@/lib/supabase/server";
 import { salariesAttendus } from "@/lib/campagne";
 import { moisLabel } from "@/lib/format";
+import { DecoupageEnCours } from "@/components/decoupage-en-cours";
 import { SegmentsControle } from "@/components/segments-controle";
 import { Alert, PageHeader } from "@/components/ui";
 import type { BulletinSegment, BulletinUpload, Dossier } from "@/lib/types";
@@ -62,6 +63,9 @@ export default async function ControleUploadPage({
         </Alert>
       )}
 
+      {upload.nb_pages == null ? (
+        <DecoupageEnCours />
+      ) : (
       <SegmentsControle
         uploadId={id}
         segments={listeSegments}
@@ -75,6 +79,7 @@ export default async function ControleUploadPage({
         peutModifier={peutBulletins}
         nbPages={upload.nb_pages ?? Math.max(1, ...listeSegments.map((s) => s.page_fin))}
       />
+      )}
     </div>
   );
 }

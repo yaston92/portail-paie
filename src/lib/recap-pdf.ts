@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { moisLabel, formatDate } from "@/lib/format";
+import { moisLabel, formatDate, formaterHeuresMinutes } from "@/lib/format";
 import { composerNoteAvecSortie, texteNoteSortie } from "@/lib/sortie";
 import { NATURE_LABELS, type Absence, type SaisieVariables, type Salarie } from "@/lib/types";
 import { formaterDetailJoursAbsences, formaterPlagesJours, totauxAbsences } from "@/lib/campagne";
@@ -161,7 +161,10 @@ export async function genererRecapPdf(params: RecapParams): Promise<Uint8Array> 
         );
       } else {
         if (saisie.heures_supp) {
-          ligne(`Heures supplémentaires : ${saisie.heures_supp} h`, { retrait: 12 });
+          ligne(
+            `Heures supplémentaires : ${formaterHeuresMinutes(Number(saisie.heures_supp))}`,
+            { retrait: 12 }
+          );
         }
         const absences = params.absencesParSaisie.get(saisie.id) ?? [];
         if (absences.length === 0 && !saisie.heures_supp) {

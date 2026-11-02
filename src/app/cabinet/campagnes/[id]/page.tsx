@@ -4,9 +4,9 @@ import { requireRole } from "@/lib/auth";
 import { getCabinetActif } from "@/lib/cabinet";
 import { aLeDroit } from "@/lib/droits";
 import { createClient } from "@/lib/supabase/server";
-import { etatCampagne, saisieComplete, totauxAbsences } from "@/lib/campagne";
+import { etatCampagne, formaterDetailJoursAbsences, saisieComplete, totauxAbsences } from "@/lib/campagne";
 import { chargerNotes } from "@/lib/notes";
-import { formatDate, formatDateTime, formatMontant, moisLabel } from "@/lib/format";
+import { formatDate, formatDateTime, formatMontant, formaterHeuresMinutes, moisLabel } from "@/lib/format";
 import {
   RelancerCampagne,
   RouvrirCampagne,
@@ -190,7 +190,7 @@ export default async function CabinetCampagneDetailPage({
                           <span className="text-xs">
                             {campagne.statut !== "cloturee_identique" &&
                             saisie?.heures_supp
-                              ? `HS : ${saisie.heures_supp} h. `
+                              ? `HS : ${formaterHeuresMinutes(Number(saisie.heures_supp))}. `
                               : ""}
                             {[...totaux.entries()]
                               .map(
@@ -198,6 +198,14 @@ export default async function CabinetCampagneDetailPage({
                                   `${NATURE_LABELS[n as keyof typeof NATURE_LABELS]} : ${t.jours} j / ${t.heures} h`
                               )
                               .join(" · ")}
+                            {(() => {
+                              const detail = formaterDetailJoursAbsences(
+                                campagne.statut === "cloturee_identique"
+                                  ? absencesSaisie.filter((a) => a.nature === "cp")
+                                  : absencesSaisie
+                              );
+                              return detail ? ` ${detail}` : "";
+                            })()}
                           </span>
                         )}
                       </Td>

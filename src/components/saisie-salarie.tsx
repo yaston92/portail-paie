@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Alert, Button, Input, Label, Textarea } from "@/components/ui";
 import { CalendrierAbsences } from "@/components/calendrier-absences";
+import { formaterHeuresMinutes, nombreVersSaisieFr, parseNombreFr } from "@/lib/format";
 import { toastError, toastSuccess } from "@/lib/toast";
 import type { Absence, SaisieMode, SaisieVariables } from "@/lib/types";
 
@@ -35,7 +36,7 @@ export function SaisieSalarie({
     saisie.net_montant?.toString() ?? ""
   );
   const [heuresSupp, setHeuresSupp] = useState(
-    saisie.heures_supp?.toString() ?? ""
+    nombreVersSaisieFr(saisie.heures_supp)
   );
   const [note, setNote] = useState(saisie.note ?? "");
   const [etat, setEtat] = useState<"idle" | "envoi" | "ok" | "erreur">("idle");
@@ -60,7 +61,7 @@ export function SaisieSalarie({
         mode,
         net_montant: mode === "net" ? parseFloat(netMontant) : null,
         heures_supp:
-          mode === "variables" && heuresSupp ? parseFloat(heuresSupp) : null,
+          mode === "variables" ? parseNombreFr(heuresSupp) : null,
         note: note.trim() || null,
         updated_at: new Date().toISOString(),
       })
@@ -143,13 +144,18 @@ export function SaisieSalarie({
           <div className="max-w-xs">
             <Label>Heures supplémentaires</Label>
             <Input
-              type="number"
-              step="0.5"
-              min="0"
+              type="text"
+              inputMode="decimal"
+              placeholder="2,5"
               value={heuresSupp}
               onChange={(e) => setHeuresSupp(e.target.value)}
               disabled={disabled}
             />
+            {parseNombreFr(heuresSupp) != null && (
+              <p className="text-xs text-gray-500 mt-1">
+                {formaterHeuresMinutes(parseNombreFr(heuresSupp)!)}
+              </p>
+            )}
           </div>
           <div>
             <Label>Absences et congés du mois</Label>

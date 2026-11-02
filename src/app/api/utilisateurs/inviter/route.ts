@@ -4,7 +4,7 @@ import { getApiCabinetProfile, cabinetPeutAccederDossier } from "@/lib/auth";
 import { getCabinetActif, peutAdminCabinet } from "@/lib/cabinet";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { journaliser } from "@/lib/audit";
-import { envoyerEmail, gabaritEmail, styleBoutonEmail } from "@/lib/email";
+import { boutonEmail, envoyerEmail, gabaritEmail } from "@/lib/email";
 import { hrefEmail } from "@/lib/lien-activation";
 import { creerLien48h, MENTION_LIEN_48H } from "@/lib/lien-duree";
 import { inviterOuReinviterClient } from "@/lib/acces-client";
@@ -67,7 +67,7 @@ async function envoyerInvitationCabinet(opts: {
           ? `Voici un nouveau lien pour définir votre mot de passe et accéder à votre espace ${roleLabel}.`
           : `Vous êtes invité(e) en tant que <strong>${roleLabel}</strong>. Cliquez ci-dessous pour créer votre mot de passe.`) +
         ` ${MENTION_LIEN_48H}` +
-        `<br/><br/><a href="${hrefEmail(opts.lien)}" style="${styleBoutonEmail()}">Définir mon mot de passe</a>` +
+        boutonEmail(opts.lien, "Définir mon mot de passe") +
         `<p style="font-size:12px;color:#666;word-break:break-all;margin-top:16px">${hrefEmail(opts.lien)}</p>`
     ),
   });

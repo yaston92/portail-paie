@@ -58,8 +58,9 @@ export function BulletinsUploadForm({
         toastError(msg);
         return;
       }
-      toastSuccess("PDF analysé : contrôlez l'appariement");
-      router.push(`/cabinet/bulletins/uploads/${json.id}`);
+      toastSuccess(
+        "PDF reçu. Le découpage continue : vous pouvez naviguer. Une notification arrivera."
+      );
       router.refresh();
     } catch {
       const msg = "Échec de l'analyse du PDF.";

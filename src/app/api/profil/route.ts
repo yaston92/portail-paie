@@ -5,7 +5,7 @@ import { journaliser } from "@/lib/audit";
 import {
   envoyerEmail,
   gabaritEmail,
-  styleBoutonEmail,
+  boutonEmail,
 } from "@/lib/email";
 import { hrefEmail } from "@/lib/lien-activation";
 import { creerLien48h, MENTION_LIEN_48H } from "@/lib/lien-duree";
@@ -151,7 +151,7 @@ export async function PATCH(request: Request) {
       `Bonjour${prenomAffiche ? ` ${prenomAffiche}` : ""},` +
       `<br/><br/>Vous avez demandé à utiliser <strong>${email}</strong> comme nouvelle adresse de connexion sur ETIK Paie.` +
       `<br/><br/>Cliquez sur le bouton ci-dessous pour activer cette adresse. ${MENTION_LIEN_48H} Tant que vous n'avez pas confirmé, votre adresse actuelle (<strong>${profile.email}</strong>) reste active.` +
-      `<br/><br/><a href="${hrefEmail(lienPrincipal)}" style="${styleBoutonEmail()}">Activer mon nouvel email</a>` +
+      boutonEmail(lienPrincipal, "Activer mon nouvel email") +
       (lienApp
         ? `<p style="font-size:13px;margin-top:16px">Si l’app ne s’ouvre pas, utilisez ce lien dans le navigateur :<br/><a href="${hrefEmail(lienWeb)}">${hrefEmail(lienWeb)}</a></p>`
         : "") +

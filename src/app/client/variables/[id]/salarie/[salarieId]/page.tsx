@@ -8,7 +8,6 @@ import { labelMotifSortie } from "@/lib/sortie";
 import { SaisieSalarie } from "@/components/saisie-salarie";
 import { NotesThread } from "@/components/notes-thread";
 import { SortieSalarieForm } from "@/components/salarie-forms";
-import { ArretMaladieClientForm } from "@/components/arret-maladie-form";
 import { Alert, Card, CardBody, PageHeader } from "@/components/ui";
 import type { Absence, Campagne, Salarie, SaisieVariables } from "@/lib/types";
 
@@ -117,25 +116,6 @@ export default async function SaisieSalariePage({
                 <SortieSalarieForm
                   salarieId={salarie.id}
                   variant="client"
-                  compact
-                />
-              </div>
-            </details>
-          </CardBody>
-        </Card>
-      )}
-
-      {!verrouillee && salarie.statut === "actif" && (
-        <Card>
-          <CardBody>
-            <details>
-              <summary className="cursor-pointer text-xs font-normal text-gray-500">
-                Arrêt maladie
-              </summary>
-              <div className="mt-3 max-w-md">
-                <ArretMaladieClientForm
-                  salarieId={salarie.id}
-                  salarieNom={`${salarie.prenom} ${salarie.nom}`}
                   compact
                 />
               </div>

@@ -12,6 +12,7 @@ const CHEMINS_PUBLICS = [
   "/confidentialite",
   "/privacy",
   "/contact",
+  "/ouvrir",
 ];
 
 function aUneSession(request: NextRequest): boolean {

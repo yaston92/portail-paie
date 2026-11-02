@@ -15,6 +15,7 @@ type ProfilMin = {
   dossier_id: string | null;
   dossier_client_id?: string | null;
   salarie_id: string | null;
+  espace_origine?: string | null;
 };
 
 /** Espaces que ce compte peut ouvrir (sociétés salariées, espace client, cabinet). */
@@ -24,12 +25,24 @@ export const listerEspaces = cache(async function listerEspaces(
   const admin = createAdminClient();
   const liens: EspaceLien[] = [];
 
-  if (profile.role === "directeur" || profile.role === "admin_cabinet" || profile.role === "collaborateur") {
+  const roleCabinet =
+    profile.espace_origine === "directeur" ||
+    profile.espace_origine === "admin_cabinet" ||
+    profile.espace_origine === "collaborateur"
+      ? profile.espace_origine
+      : profile.role;
+  if (
+    roleCabinet === "directeur" ||
+    roleCabinet === "admin_cabinet" ||
+    roleCabinet === "collaborateur"
+  ) {
     liens.push({
       kind: "cabinet",
       dossierId: null,
       salarieId: null,
-      label: "Espace cabinet",
+      label: profile.espace_origine
+        ? "Revenir à l'espace cabinet"
+        : "Espace cabinet",
       href: "/espace/cabinet",
     });
   }
