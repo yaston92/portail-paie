@@ -14,7 +14,7 @@ export const DROITS_COLLABORATEUR = [
   {
     id: "bulletins",
     label: "Bulletins",
-    detail: "Déposer un PDF, corriger le découpage et publier",
+    detail: "Déposer un PDF, corriger le découpage, publier ou supprimer un dépôt",
   },
   {
     id: "variables",

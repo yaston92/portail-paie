@@ -5,9 +5,10 @@ import { getCabinetActif } from "@/lib/cabinet";
 import { aLeDroit } from "@/lib/droits";
 import { createClient } from "@/lib/supabase/server";
 import { salariesAttendus } from "@/lib/campagne";
-import { moisLabel } from "@/lib/format";
+import { moisLabel, moisVersParam } from "@/lib/format";
 import { DecoupageEnCours } from "@/components/decoupage-en-cours";
 import { SegmentsControle } from "@/components/segments-controle";
+import { SupprimerDepotBulletin } from "@/components/supprimer-depot-bulletin";
 import { Alert, PageHeader } from "@/components/ui";
 import type { BulletinSegment, BulletinUpload, Dossier } from "@/lib/types";
 
@@ -47,12 +48,22 @@ export default async function ControleUploadPage({
         titre={`Contrôle des bulletins : ${d.sigle} (${moisLabel(upload.mois)})`}
         sousTitre="Confirmez que chaque bulletin correspond aux bonnes pages, corrigez le découpage, puis publiez."
         actions={
-          <Link
-            href="/cabinet/bulletins"
-            className="text-sm text-blue-700 hover:underline"
-          >
-            Retour aux dépôts
-          </Link>
+          <span className="flex items-center gap-4">
+            {peutBulletins && (
+              <SupprimerDepotBulletin
+                id={id}
+                publie={upload.statut === "publie"}
+                libelle="Supprimer le dépôt"
+                redirigerVers={`/cabinet/bulletins/mois/${moisVersParam(upload.mois)}`}
+              />
+            )}
+            <Link
+              href="/cabinet/bulletins"
+              className="text-sm text-blue-700 hover:underline"
+            >
+              Retour aux dépôts
+            </Link>
+          </span>
         }
       />
 

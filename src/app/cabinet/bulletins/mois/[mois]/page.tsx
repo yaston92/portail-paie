@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { getCabinetActif } from "@/lib/cabinet";
+import { aLeDroit } from "@/lib/droits";
 import { createClient } from "@/lib/supabase/server";
+import { SupprimerDepotBulletin } from "@/components/supprimer-depot-bulletin";
 import {
   formatDateTime,
   moisDepuisParam,
@@ -27,7 +29,7 @@ export default async function CabinetBulletinsMoisPage({
   params: Promise<{ mois: string }>;
   searchParams: Promise<{ dossier?: string }>;
 }) {
-  await requireRole(["admin_cabinet", "collaborateur"]);
+  const profile = await requireRole(["admin_cabinet", "collaborateur"]);
   const { mois: moisParam } = await params;
   const mois = moisDepuisParam(moisParam);
   if (!mois) notFound();
@@ -35,6 +37,7 @@ export default async function CabinetBulletinsMoisPage({
   const sp = await searchParams;
   const cabinet = await getCabinetActif();
   if (!cabinet) redirect("/cabinet/cabinets");
+  const peutBulletins = aLeDroit(profile, cabinet, "bulletins");
 
   const supabase = await createClient();
 
@@ -127,6 +130,12 @@ export default async function CabinetBulletinsMoisPage({
                       >
                         ZIP
                       </a>
+                    )}
+                    {peutBulletins && (
+                      <SupprimerDepotBulletin
+                        id={u.id}
+                        publie={u.statut === "publie"}
+                      />
                     )}
                   </span>
                 </Td>
