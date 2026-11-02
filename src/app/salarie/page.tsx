@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { soldePrevisionnel } from "@/lib/demandes-conge";
 import { formatDate, moisLabel } from "@/lib/format";
 import { Alert, Card, CardBody, PageHeader } from "@/components/ui";
 import { SoldeCpTableau } from "@/components/solde-cp-tableau";
@@ -51,9 +50,6 @@ export default async function SalarieAccueilPage() {
   const demandes = (demandesRaw ?? []) as DemandeConge[];
   const arrets = (arretsRaw ?? []) as ArretMaladie[];
   const solde = cp as SoldeCp | null;
-  const previsionnel = solde
-    ? soldePrevisionnel(solde.restant, demandes, solde.mois_reference)
-    : null;
 
   return (
     <div className="space-y-6">
@@ -66,7 +62,7 @@ export default async function SalarieAccueilPage() {
         <CardBody>
           <h2 className="font-semibold mb-4">Vos congés payés</h2>
           {solde ? (
-            <SoldeCpTableau cp={solde} previsionnel={previsionnel} />
+            <SoldeCpTableau cp={solde} />
           ) : (
             <p className="text-sm text-gray-500">
               Votre solde de congés sera affiché après la publication de votre

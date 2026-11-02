@@ -11,13 +11,7 @@ function fmt(n: number | null | undefined) {
 }
 
 /** Affichage clair type compteur MySilae : N-1 | N, avec total restant mis en avant. */
-export function SoldeCpTableau({
-  cp,
-  previsionnel,
-}: {
-  cp: SoldeCp;
-  previsionnel?: number | null;
-}) {
+export function SoldeCpTableau({ cp }: { cp: SoldeCp }) {
   const d = soldesDerives(cp);
 
   if (!d.hasDetail) {
@@ -28,7 +22,6 @@ export function SoldeCpTableau({
           <Case valeur={d.prisTotal} label="Pris" tone="slate" />
           <Case valeur={d.restant} label="Solde" tone="green" highlight />
         </div>
-        <Previsionnel valeur={previsionnel} />
         <Pied cp={cp} />
       </div>
     );
@@ -62,14 +55,6 @@ export function SoldeCpTableau({
             <span className="text-base font-semibold">jours</span>
           </p>
         </div>
-        {previsionnel != null && previsionnel !== d.restant && (
-          <div className="text-right">
-            <p className="text-xs text-emerald-800/70">Après demandes en cours</p>
-            <p className="text-lg font-bold text-emerald-900 tabular-nums">
-              {fmt(previsionnel)} j.
-            </p>
-          </div>
-        )}
       </div>
 
       <Pied cp={cp} />
@@ -131,15 +116,6 @@ function Case({
       </p>
       <p className="text-xs text-gray-500 mt-1">{label}</p>
     </div>
-  );
-}
-
-function Previsionnel({ valeur }: { valeur?: number | null }) {
-  if (valeur == null) return null;
-  return (
-    <p className="text-sm text-gray-700">
-      Solde prévisionnel : <strong>{fmt(valeur)} j.</strong>
-    </p>
   );
 }
 

@@ -125,6 +125,35 @@ export async function destinatairesClientsParDossier(
   return map;
 }
 
+/** Client qui valide, et cabinet qui doit être au courant. */
+export async function prevenirDemandeConge(opts: {
+  dossierId: string;
+  titre: string;
+  corps: string;
+}) {
+  const [clients, cabinet] = await Promise.all([
+    destinatairesClient(opts.dossierId),
+    destinatairesCabinet(opts.dossierId),
+  ]);
+  const clientsSeuls = new Set(clients);
+  await Promise.all([
+    notifier({
+      userIds: clients,
+      titre: opts.titre,
+      corps: opts.corps,
+      lien: "/client/conges",
+      libelleLien: "Voir la demande",
+    }),
+    notifier({
+      userIds: cabinet.filter((id) => !clientsSeuls.has(id)),
+      titre: opts.titre,
+      corps: opts.corps,
+      lien: `/cabinet/dossiers/${opts.dossierId}`,
+      libelleLien: "Ouvrir le dossier",
+    }),
+  ]);
+}
+
 /** Crée des notifications in-app et envoie l'email correspondant. */
 export async function notifier({
   userIds,
@@ -134,35 +163,43 @@ export async function notifier({
   libelleLien,
   email = true,
 }: NotifyParams) {
-  if (userIds.length === 0) return;
+  const ids = [...new Set(userIds)];
+  if (ids.length === 0) {
+    console.error("[notif] aucun destinataire:", titre);
+    return;
+  }
   const admin = createAdminClient();
 
-  await admin.from("notifications").insert(
-    userIds.map((userId) => ({
+  const { error } = await admin.from("notifications").insert(
+    ids.map((userId) => ({
       user_id: userId,
       titre,
       corps,
       lien: lien ?? null,
     }))
   );
+  if (error) console.error("[notif] enregistrement:", titre, error.message);
 
-  await envoyerPush(userIds, titre, corps, lien);
+  await envoyerPush(ids, titre, corps, lien);
 
   if (email) {
     const { data: profiles } = await admin
       .from("profiles")
       .select("email, nom, prenom")
-      .in("id", userIds);
+      .in("id", ids);
     const destinataires = (profiles ?? [])
       .filter((p) => p.email)
       .map((p) => ({ email: p.email as string, name: `${p.prenom} ${p.nom}`.trim() }));
-    if (destinataires.length > 0) {
-      await envoyerEmail({
-        to: destinataires,
-        subject: titre,
-        html: gabaritEmail(titre, corps, lien, libelleLien),
-      });
+    if (destinataires.length === 0) {
+      console.error("[notif] aucun email:", titre);
+      return;
     }
+    const ok = await envoyerEmail({
+      to: destinataires,
+      subject: titre,
+      html: gabaritEmail(titre, corps, lien, libelleLien),
+    });
+    if (!ok) console.error("[notif] email refusé:", titre);
   }
 }
 

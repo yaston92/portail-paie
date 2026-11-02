@@ -4,7 +4,7 @@ import { getApiProfile } from "@/lib/auth";
 import { journaliser } from "@/lib/audit";
 import { aujourdhuiParis, joursOuvres, retirerAbsencesCp } from "@/lib/demandes-conge";
 import { formatDate } from "@/lib/format";
-import { destinatairesClient, notifier } from "@/lib/notify";
+import { prevenirDemandeConge } from "@/lib/notify";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { DemandeConge } from "@/lib/types";
 
@@ -84,11 +84,10 @@ export async function POST(
   }
 
   const nom = `${profile.prenom} ${profile.nom}`.trim() || profile.email;
-  await notifier({
-    userIds: await destinatairesClient(d.dossier_id),
+  await prevenirDemandeConge({
+    dossierId: d.dossier_id,
     titre: "Congés modifiés, accord à redonner",
-    corps: `${nom} a modifié sa demande : du ${formatDate(date_debut)} au ${formatDate(date_fin)}. Votre accord est à nouveau nécessaire.`,
-    lien: "/client/conges",
+    corps: `${nom} a modifié sa demande de congés : du ${formatDate(date_debut)} au ${formatDate(date_fin)}. Votre accord est à nouveau nécessaire.`,
   });
 
   await journaliser({

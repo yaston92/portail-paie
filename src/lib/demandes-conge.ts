@@ -89,37 +89,6 @@ export function soldesDerives(cp: SoldeCp) {
 }
 
 /**
- * Jours à déduire du solde bulletin pour le prévisionnel :
- * demandes en attente + validées dont la fin est après le mois de référence.
- */
-export function joursADeduirePrevisionnel(
-  demandes: Pick<DemandeConge, "statut" | "jours" | "date_fin">[],
-  moisReference: string | null
-): number {
-  let total = 0;
-  for (const d of demandes) {
-    if (d.statut !== "en_attente" && d.statut !== "validee") continue;
-    if (moisReference && d.date_fin <= moisReference.slice(0, 10)) {
-      // Congés entièrement dans/avant le mois du bulletin : déjà reflétés en principe
-      // On déduit seulement si en_attente (pas encore sur bulletin) ou validée après référence
-      if (d.statut === "validee") continue;
-    }
-    total += Number(d.jours) || 0;
-  }
-  return Math.round(total * 100) / 100;
-}
-
-export function soldePrevisionnel(
-  restant: number | null,
-  demandes: Pick<DemandeConge, "statut" | "jours" | "date_fin">[],
-  moisReference: string | null
-): number | null {
-  if (restant == null) return null;
-  const deduit = joursADeduirePrevisionnel(demandes, moisReference);
-  return Math.round((restant - deduit) * 100) / 100;
-}
-
-/**
  * Écrit les absences CP sur les saisies des campagnes ouvertes/envoyées.
  * Retourne les jours non synchronisés (pas de campagne).
  */

@@ -2,15 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getApiProfile } from "@/lib/auth";
 import { journaliser } from "@/lib/audit";
-import {
-  aujourdhuiParis,
-  joursOuvres,
-  soldePrevisionnel,
-} from "@/lib/demandes-conge";
+import { aujourdhuiParis, joursOuvres } from "@/lib/demandes-conge";
 import { formatDate } from "@/lib/format";
-import { destinatairesClient, notifier } from "@/lib/notify";
+import { prevenirDemandeConge } from "@/lib/notify";
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { DemandeConge, SoldeCp } from "@/lib/types";
+import type { DemandeConge } from "@/lib/types";
 
 export async function GET() {
   const profile = await getApiProfile(["salarie"]);
@@ -67,25 +63,17 @@ export async function POST(request: Request) {
   const jours = joursListe.length;
 
   const admin = createAdminClient();
-  const [{ data: solde }, { data: existantes }] = await Promise.all([
-    admin.from("soldes_cp").select("*").eq("salarie_id", profile.salarie_id).maybeSingle(),
-    admin
-      .from("demandes_conge")
-      .select("statut, jours, date_fin")
-      .eq("salarie_id", profile.salarie_id)
-      .in("statut", ["en_attente", "validee"]),
-  ]);
+  const { data: solde } = await admin
+    .from("soldes_cp")
+    .select("restant")
+    .eq("salarie_id", profile.salarie_id)
+    .maybeSingle();
 
-  const cp = solde as SoldeCp | null;
-  const prev = soldePrevisionnel(
-    cp?.restant ?? null,
-    (existantes ?? []) as Pick<DemandeConge, "statut" | "jours" | "date_fin">[],
-    cp?.mois_reference ?? null
-  );
-  if (prev != null && jours > prev + 0.001) {
+  const restantBulletin = solde?.restant == null ? null : Number(solde.restant);
+  if (restantBulletin != null && jours > restantBulletin + 0.001) {
     return NextResponse.json(
       {
-        error: `Solde prévisionnel insuffisant (${prev.toLocaleString("fr-FR")} j. disponibles pour ${jours} j. demandés).`,
+        error: `Le bulletin indique ${restantBulletin.toLocaleString("fr-FR")} jour(s) restant(s). Cette demande en compte ${jours}.`,
       },
       { status: 400 }
     );
@@ -114,11 +102,10 @@ export async function POST(request: Request) {
   }
 
   const nom = `${profile.prenom} ${profile.nom}`.trim() || profile.email;
-  await notifier({
-    userIds: await destinatairesClient(profile.dossier_id),
+  await prevenirDemandeConge({
+    dossierId: profile.dossier_id,
     titre: "Demande de congés payés",
-    corps: `${nom} demande ${jours} jour(s) du ${formatDate(date_debut)} au ${formatDate(date_fin)}.`,
-    lien: "/client/conges",
+    corps: `${nom} demande ${jours} jour(s) de congés, du ${formatDate(date_debut)} au ${formatDate(date_fin)}. Merci de donner votre accord.`,
   });
 
   await journaliser({
