@@ -221,13 +221,16 @@ export async function POST(
     details: { bulletins: segments.length, mois: upload.mois },
   });
 
+  const libelleMois = moisLabel(upload.mois);
   await notifier({
     userIds: await destinatairesClient(upload.dossier_id),
-    titre: `Bulletins de ${moisLabel(upload.mois)} disponibles`,
-    corps: `${segments.length} bulletin(s) de paie ont été publiés sur votre espace.`,
+    titre: `Les bulletins de paie de ${libelleMois} sont arrivés`,
+    corps:
+      `Les bulletins de paie de ${libelleMois} sont arrivés : ${segments.length} bulletin(s). ` +
+      "Ouvrez votre espace pour les consulter. Vous pouvez aussi les enregistrer.",
     lien: "/client/bulletins",
+    libelleLien: "Voir les bulletins",
   });
-  const libelleMois = moisLabel(upload.mois);
   for (const salarie of salariesNotifiables) {
     const corps = salarie.prenom
       ? `Bonjour ${salarie.prenom}, votre bulletin de paie de ${libelleMois} est arrivé. Ouvrez-le pour le consulter à l'écran. Vous pouvez aussi l'enregistrer si vous voulez le garder.`
