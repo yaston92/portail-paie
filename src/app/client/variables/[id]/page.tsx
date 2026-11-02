@@ -176,11 +176,6 @@ export default async function ClientCampagnePage({
                     >
                       <span className="font-medium text-sm">
                         {s.nom} {s.prenom}
-                        {!verrouillee && (
-                          <span className="mt-1 inline-block rounded-md bg-blue-700 px-2 py-1 text-xs font-semibold text-white">
-                            Saisir les variables
-                          </span>
-                        )}
                         {s.date_sortie && (
                           <span className="ml-2 text-xs text-amber-700">
                             (sortie le {formatDate(s.date_sortie)}
