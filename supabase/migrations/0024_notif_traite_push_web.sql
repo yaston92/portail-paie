@@ -32,3 +32,5 @@ create policy web_push_own on public.web_push_abonnements
   for all
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
+
+revoke all on table public.web_push_abonnements from anon, authenticated;

@@ -40,6 +40,9 @@ export async function proxy(request: NextRequest) {
   const suite = () =>
     NextResponse.next({ request: { headers: requestHeaders } });
 
+  // Le script des bannières PC doit être servi tel quel, même sans session.
+  if (pathname === "/sw.js") return suite();
+
   // Pages légales : accessibles sans compte, sans lecture de session.
   if (
     pathname.startsWith("/confidentialite") ||
