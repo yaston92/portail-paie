@@ -75,7 +75,7 @@ export default async function ControleUploadPage({
       )}
 
       {upload.nb_pages == null ? (
-        <DecoupageEnCours />
+        <DecoupageEnCours id={id} />
       ) : (
       <SegmentsControle
         uploadId={id}

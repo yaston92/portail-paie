@@ -20,6 +20,23 @@ export async function analyserBulletinDepose(opts: {
   contenu: Buffer;
 }): Promise<void> {
   const { admin, uploadId, dossierId, mois, userId, contenu } = opts;
+  const { count: deja } = await admin
+    .from("bulletin_segments")
+    .select("id", { count: "exact", head: true })
+    .eq("upload_id", uploadId);
+  if ((deja ?? 0) > 0) {
+    const { data: row } = await admin
+      .from("bulletin_uploads")
+      .select("nb_pages")
+      .eq("id", uploadId)
+      .maybeSingle();
+    if (row?.nb_pages == null) {
+      const pages = await compterPagesPdf(contenu);
+      await admin.from("bulletin_uploads").update({ nb_pages: pages }).eq("id", uploadId);
+    }
+    return;
+  }
+
   const nbPages = await compterPagesPdf(contenu);
   let textesPages: string[] = [];
   try {

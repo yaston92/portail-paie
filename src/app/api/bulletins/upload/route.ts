@@ -75,14 +75,7 @@ export async function POST(request: Request) {
   await uploaderFichier("bulletins", chemin, contenu, "application/pdf");
   await admin.from("bulletin_uploads").update({ chemin }).eq("id", upload.id);
 
-  planifierDecoupage({
-    admin,
-    uploadId: upload.id,
-    dossierId,
-    mois,
-    userId: profile.id,
-    contenu,
-  });
+  planifierDecoupage({ admin, uploadId: upload.id, contenu });
 
   return NextResponse.json({ ok: true, id: upload.id, en_cours: true });
 }

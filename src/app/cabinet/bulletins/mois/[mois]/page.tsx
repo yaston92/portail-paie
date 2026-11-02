@@ -109,7 +109,9 @@ export default async function CabinetBulletinsMoisPage({
                 <Td>{u.nb_pages ?? "-"}</Td>
                 <Td>{formatDateTime(u.created_at)}</Td>
                 <Td>
-                  {u.statut === "en_controle" ? (
+                  {u.nb_pages == null ? (
+                    <Badge variant="amber">Découpage…</Badge>
+                  ) : u.statut === "en_controle" ? (
                     <Badge variant="amber">En contrôle</Badge>
                   ) : (
                     <Badge variant="green">Publié</Badge>
@@ -121,7 +123,11 @@ export default async function CabinetBulletinsMoisPage({
                       href={`/cabinet/bulletins/uploads/${u.id}`}
                       className="text-sm text-blue-700 hover:underline"
                     >
-                      {u.statut === "en_controle" ? "Contrôler" : "Détail"}
+                      {u.nb_pages == null
+                        ? "Suivre"
+                        : u.statut === "en_controle"
+                          ? "Contrôler"
+                          : "Détail"}
                     </Link>
                     {u.statut === "publie" && (
                       <a
