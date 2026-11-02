@@ -1,9 +1,8 @@
-import { after, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getApiProfile, cabinetPeutAccederDossier } from "@/lib/auth";
+import { planifierDecoupage } from "@/lib/depot-bulletin";
 import { refuserSansDroit } from "@/lib/droits-serveur";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { analyserBulletinDepose } from "@/lib/analyser-bulletins";
-import { notifier } from "@/lib/notify";
 import { uploaderFichier } from "@/lib/storage";
 import { estPdfValide, normaliserPdf } from "@/lib/pdf-bulletins";
 
@@ -76,28 +75,13 @@ export async function POST(request: Request) {
   await uploaderFichier("bulletins", chemin, contenu, "application/pdf");
   await admin.from("bulletin_uploads").update({ chemin }).eq("id", upload.id);
 
-  const userId = profile.id;
-  after(async () => {
-    try {
-      await analyserBulletinDepose({
-        admin,
-        uploadId: upload.id,
-        dossierId,
-        mois,
-        userId,
-        contenu,
-      });
-    } catch (e) {
-      console.error("[bulletins/upload] découpage:", e);
-      await admin.from("bulletin_uploads").update({ nb_pages: 0 }).eq("id", upload.id);
-      await notifier({
-        userIds: [userId],
-        titre: "Découpage des bulletins impossible",
-        corps: "Le PDF a été reçu, mais le découpage n'a pas abouti. Déposez-le à nouveau.",
-        lien: "/cabinet/bulletins",
-        email: false,
-      });
-    }
+  planifierDecoupage({
+    admin,
+    uploadId: upload.id,
+    dossierId,
+    mois,
+    userId: profile.id,
+    contenu,
   });
 
   return NextResponse.json({ ok: true, id: upload.id, en_cours: true });

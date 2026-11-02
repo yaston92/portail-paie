@@ -98,9 +98,12 @@ export async function analyserBulletinDepose(opts: {
   const nonApparies = segments.filter((s) => !s.salarieId).length;
   await notifier({
     userIds: [userId],
-    titre: "Découpage des bulletins terminé",
-    corps:
-      nonApparies > 0
+    titre: texteVide
+      ? "PDF reçu, noms illisibles"
+      : "Découpage des bulletins terminé",
+    corps: texteVide
+      ? "Les lettres de ce PDF sont dessinées : les noms ne peuvent pas être lus. Réexportez les bulletins depuis le logiciel de paie, avec le texte sélectionnable."
+      : nonApparies > 0
         ? `${segments.length} bulletin(s) détecté(s), ${nonApparies} à affecter.`
         : `${segments.length} bulletin(s) détecté(s). Vous pouvez contrôler puis publier.`,
     lien: `/cabinet/bulletins/uploads/${uploadId}`,
