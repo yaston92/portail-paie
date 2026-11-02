@@ -157,14 +157,19 @@ export async function notifier({
   }
   const admin = createAdminClient();
 
-  const { error } = await admin.from("notifications").insert(
-    ids.map((userId) => ({
-      user_id: userId,
-      titre,
-      corps,
-      lien: lien ?? null,
-    }))
-  );
+  const groupeId = crypto.randomUUID();
+  const lignes = ids.map((userId) => ({
+    user_id: userId,
+    titre,
+    corps,
+    lien: lien ?? null,
+  }));
+  let { error } = await admin
+    .from("notifications")
+    .insert(lignes.map((ligne) => ({ ...ligne, groupe_id: groupeId })));
+  if (error?.message.includes("groupe_id")) {
+    ({ error } = await admin.from("notifications").insert(lignes));
+  }
   if (error) console.error("[notif] enregistrement:", titre, error.message);
 
   await envoyerPush(ids, titre, corps, lien);

@@ -8,7 +8,11 @@ import { EtatNotification } from "@/components/etat-notification";
 import { SupprimerNotification } from "@/components/supprimer-notification";
 import { Card, CardBody, EmptyState, PageHeader } from "@/components/ui";
 import { formatDateTime } from "@/lib/format";
-import type { Notification } from "@/lib/types";
+import {
+  lireVueNotification,
+  listerNotifications,
+  type VueNotification,
+} from "@/lib/notifications-suivi";
 
 /** Normalise les anciens libellés (tirets, « rouvert·e »). */
 function texteNotif(texte: string): string {
@@ -22,46 +26,63 @@ function texteNotif(texte: string): string {
     .replace(/\brouvert\b/gi, "de nouveau ouvert");
 }
 
-export default async function NotificationsPage() {
+function FiltreNotifications({ vue }: { vue: VueNotification }) {
+  const choix = [
+    { id: "pas-encore" as const, label: "Pas encore", href: "/notifications" },
+    { id: "traite" as const, label: "Traité", href: "/notifications?vue=traite" },
+  ];
+  return (
+    <div className="inline-flex overflow-hidden rounded-lg border border-gray-200 text-sm">
+      {choix.map((item) => (
+        <Link
+          key={item.id}
+          href={item.href}
+          className={`px-3 py-1.5 ${
+            vue === item.id
+              ? item.id === "traite"
+                ? "bg-emerald-100 font-semibold text-emerald-900"
+                : "bg-amber-100 font-semibold text-amber-900"
+              : "bg-white text-gray-600 hover:bg-gray-50"
+          }`}
+        >
+          {item.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
+export default async function NotificationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ vue?: string }>;
+}) {
   const profile = await getProfile();
   if (!profile) redirect("/login");
 
+  const vue = lireVueNotification((await searchParams).vue);
+  const notifications = await listerNotifications(profile, vue);
   const supabase = await createClient();
   const limite =
     profile.role === "client"
       ? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
       : null;
-  let query = supabase
-    .from("notifications")
-    .select("*")
-    .eq("user_id", profile.id)
-    .order("created_at", { ascending: false })
-    .limit(100);
-  if (limite) query = query.gte("created_at", limite);
-  const { data } = await query;
-  const notifications = (data ?? []) as Notification[];
-  const aDesNonLues = notifications.some((n) => !n.lu);
+  const userId = profile.id;
 
-  if (aDesNonLues || limite) {
-    const userId = profile.id;
-    const avant = limite;
-    after(async () => {
-      if (avant) {
-        await createAdminClient()
-          .from("notifications")
-          .delete()
-          .eq("user_id", userId)
-          .lt("created_at", avant);
-      }
-      if (aDesNonLues) {
-        await supabase
-          .from("notifications")
-          .update({ lu: true })
-          .eq("user_id", userId)
-          .eq("lu", false);
-      }
-    });
-  }
+  after(async () => {
+    if (limite) {
+      await createAdminClient()
+        .from("notifications")
+        .delete()
+        .eq("user_id", userId)
+        .lt("created_at", limite);
+    }
+    await supabase
+      .from("notifications")
+      .update({ lu: true })
+      .eq("user_id", userId)
+      .eq("lu", false);
+  });
 
   return (
     <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6">
@@ -69,21 +90,32 @@ export default async function NotificationsPage() {
         titre="Notifications"
         sousTitre={
           profile.role === "client"
-            ? "Indiquez si chaque notification est traitée ou pas encore. Celles de plus de 30 jours sont retirées automatiquement."
-            : "Indiquez si chaque notification est traitée ou pas encore."
+            ? "Chaque notification commence en pas encore. Celles de plus de 30 jours sont retirées automatiquement."
+            : isCabinetRole(profile.role)
+              ? "Chaque notification commence en pas encore. Le statut est le même pour la direction et les collaborateurs."
+              : "Chaque notification commence en pas encore."
         }
         actions={
-          <Link
-            href={roleHome(profile.role)}
-            className="text-sm text-blue-700 hover:underline"
-          >
-            Retour à l&apos;accueil
-          </Link>
+          <>
+            <FiltreNotifications vue={vue} />
+            <Link
+              href={roleHome(profile.role)}
+              className="text-sm text-blue-700 hover:underline"
+            >
+              Retour à l&apos;accueil
+            </Link>
+          </>
         }
       />
       <Card>
         {notifications.length === 0 ? (
-          <EmptyState message="Aucune notification." />
+          <EmptyState
+            message={
+              vue === "traite"
+                ? "Aucune notification traitée."
+                : "Aucune notification en pas encore."
+            }
+          />
         ) : (
           <ul className="divide-y divide-gray-100">
             {notifications.map((n) => (
@@ -101,6 +133,12 @@ export default async function NotificationsPage() {
                           {texteNotif(n.corps)}
                         </p>
                       )}
+                      {n.collaborateurs.length > 0 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {n.collaborateurs.length > 1 ? "Collaborateurs" : "Collaborateur"} :{" "}
+                          {n.collaborateurs.join(", ")}
+                        </p>
+                      )}
                       <div className="flex flex-wrap items-center gap-3 mt-2">
                         <EtatNotification id={n.id} traite={n.traite === true} />
                         {n.lien && (
@@ -111,7 +149,7 @@ export default async function NotificationsPage() {
                             Voir
                           </Link>
                         )}
-                        {isCabinetRole(profile.role) && (
+                        {isCabinetRole(profile.role) && n.user_id === profile.id && (
                           <SupprimerNotification id={n.id} />
                         )}
                       </div>

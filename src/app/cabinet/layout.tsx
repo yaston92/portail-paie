@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/auth";
 import { ROLES_CABINET } from "@/lib/types";
-import { createClient } from "@/lib/supabase/server";
 import {
   getCabinetActif,
   getCabinetsMembre,
@@ -21,9 +20,8 @@ export default async function CabinetLayout({
   const profile = await requireRole(ROLES_CABINET);
   if (profile.email_confirme === false) redirect("/verifier-email");
 
-  const supabase = await createClient();
   const [count, cabinets, cabinet] = await Promise.all([
-    compterATraiter(supabase, profile.id),
+    compterATraiter(profile),
     getCabinetsMembre(profile.id),
     getCabinetActif(),
     listerEspaces(profile).catch(() => []),

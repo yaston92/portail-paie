@@ -1,20 +1,7 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
+import { compterNotificationsATraiter } from "@/lib/notifications-suivi";
+import type { Profile } from "@/lib/types";
 
-/** Nombre de notifications encore à traiter. Repli sur les non lues si la colonne n'existe pas encore. */
-export async function compterATraiter(
-  supabase: SupabaseClient,
-  userId: string
-): Promise<number> {
-  const traite = await supabase
-    .from("notifications")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .eq("traite", false);
-  if (!traite.error) return traite.count ?? 0;
-  const lues = await supabase
-    .from("notifications")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .eq("lu", false);
-  return lues.count ?? 0;
+/** Nombre affiché sur la cloche : tâches encore en « pas encore ». */
+export async function compterATraiter(profile: Profile): Promise<number> {
+  return compterNotificationsATraiter(profile);
 }

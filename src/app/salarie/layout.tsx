@@ -1,6 +1,5 @@
 import { requireRole } from "@/lib/auth";
 import { listerEspaces } from "@/lib/espaces";
-import { createClient } from "@/lib/supabase/server";
 import { AutresEspaces } from "@/components/autres-espaces";
 import { AppShell, type NavItem } from "@/components/app-shell";
 import { compterATraiter } from "@/lib/notifications-compte";
@@ -12,9 +11,8 @@ export default async function SalarieLayout({
 }) {
   const profile = await requireRole(["salarie"]);
 
-  const supabase = await createClient();
   const [count] = await Promise.all([
-    compterATraiter(supabase, profile.id),
+    compterATraiter(profile),
     listerEspaces(profile).catch(() => []),
   ]);
 

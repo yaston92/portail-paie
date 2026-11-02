@@ -16,7 +16,7 @@ export default async function ClientLayout({
 
   const supabase = await createClient();
   const [count, planning] = await Promise.all([
-    compterATraiter(supabase, profile.id),
+    compterATraiter(profile),
     profile.dossier_id
       ? supabase
           .from("dossiers")

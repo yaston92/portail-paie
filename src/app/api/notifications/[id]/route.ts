@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getApiProfile } from "@/lib/auth";
+import { marquerNotification } from "@/lib/notifications-suivi";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /** Marque une notification comme traitée ou pas encore. */
@@ -16,13 +17,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Données invalides" }, { status: 400 });
   }
   const { id } = await params;
-  const admin = createAdminClient();
-  const { error } = await admin
-    .from("notifications")
-    .update({ traite: body.traite })
-    .eq("id", id)
-    .eq("user_id", profile.id);
-  if (error) {
+  const ok = await marquerNotification(profile, id, body.traite);
+  if (!ok) {
     return NextResponse.json({ error: "Mise à jour impossible" }, { status: 500 });
   }
   return NextResponse.json({ ok: true });
