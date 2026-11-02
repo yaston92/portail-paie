@@ -125,33 +125,19 @@ export async function destinatairesClientsParDossier(
   return map;
 }
 
-/** Client qui valide, et cabinet qui doit être au courant. */
+/** Seul le client valide une demande de congés. Le cabinet n'est pas prévenu. */
 export async function prevenirDemandeConge(opts: {
   dossierId: string;
   titre: string;
   corps: string;
 }) {
-  const [clients, cabinet] = await Promise.all([
-    destinatairesClient(opts.dossierId),
-    destinatairesCabinet(opts.dossierId),
-  ]);
-  const clientsSeuls = new Set(clients);
-  await Promise.all([
-    notifier({
-      userIds: clients,
-      titre: opts.titre,
-      corps: opts.corps,
-      lien: "/client/conges",
-      libelleLien: "Voir la demande",
-    }),
-    notifier({
-      userIds: cabinet.filter((id) => !clientsSeuls.has(id)),
-      titre: opts.titre,
-      corps: opts.corps,
-      lien: `/cabinet/dossiers/${opts.dossierId}`,
-      libelleLien: "Ouvrir le dossier",
-    }),
-  ]);
+  await notifier({
+    userIds: await destinatairesClient(opts.dossierId),
+    titre: opts.titre,
+    corps: opts.corps,
+    lien: "/client/conges",
+    libelleLien: "Voir la demande",
+  });
 }
 
 /** Crée des notifications in-app et envoie l'email correspondant. */
