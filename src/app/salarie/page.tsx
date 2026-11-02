@@ -97,12 +97,12 @@ export default async function SalarieAccueilPage() {
               </p>
             </div>
             <div className="flex gap-4 text-sm">
-              <a
+              <Link
                 href={`/voir-bulletin/${bulletin.id}`}
                 className="text-blue-700 hover:underline"
               >
-                Voir
-              </a>
+                Voir le bulletin
+              </Link>
               <a
                 href={`/api/bulletins/${bulletin.id}/telecharger`}
                 className="text-blue-700 hover:underline"

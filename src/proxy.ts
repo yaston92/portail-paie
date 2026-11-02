@@ -62,6 +62,10 @@ export async function proxy(request: NextRequest) {
     if (!estPublic && pathname !== "/") {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
+      url.search = "";
+      if (pathname.startsWith("/") && !pathname.startsWith("//")) {
+        url.searchParams.set("next", pathname);
+      }
       return NextResponse.redirect(url);
     }
     return suite();

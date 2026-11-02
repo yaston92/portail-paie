@@ -87,7 +87,11 @@ export async function POST(
   );
 
   const source = await telechargerFichier("bulletins", upload.chemin);
-  const salariesNotifiables: string[] = [];
+  const salariesNotifiables: {
+    userId: string;
+    bulletinId: string;
+    prenom: string;
+  }[] = [];
 
   async function publierSegment(segment: BulletinSegment) {
     const salarie = salarieParId.get(segment.salarie_id!);
@@ -103,18 +107,22 @@ export async function POST(
     const chemin = `dossiers/${upload.dossier_id}/${upload.mois}/${salarie.id}.pdf`;
     await uploaderFichier("bulletins", chemin, pdf, "application/pdf");
 
-    await admin.from("bulletins").upsert(
-      {
-        dossier_id: upload.dossier_id,
-        salarie_id: salarie.id,
-        mois: upload.mois,
-        chemin,
-        nom_fichier: nomFichier,
-        upload_id: id,
-        published_at: new Date().toISOString(),
-      },
-      { onConflict: "salarie_id,mois" }
-    );
+    const { data: ligne } = await admin
+      .from("bulletins")
+      .upsert(
+        {
+          dossier_id: upload.dossier_id,
+          salarie_id: salarie.id,
+          mois: upload.mois,
+          chemin,
+          nom_fichier: nomFichier,
+          upload_id: id,
+          published_at: new Date().toISOString(),
+        },
+        { onConflict: "salarie_id,mois" }
+      )
+      .select("id")
+      .single();
 
     // Solde CP : valeurs contrôlées sur le segment, sinon ré-extraction sur le PDF découpé
     let cpAcquis = segment.cp_acquis;
@@ -174,8 +182,12 @@ export async function POST(
     }
 
     // Notification du salarié (sauf opposition au bulletin dématérialisé)
-    if (salarie.profile_id && !salarie.opposition_bulletin) {
-      salariesNotifiables.push(salarie.profile_id);
+    if (ligne && salarie.profile_id && !salarie.opposition_bulletin) {
+      salariesNotifiables.push({
+        userId: salarie.profile_id,
+        bulletinId: ligne.id,
+        prenom: salarie.prenom?.trim() || "",
+      });
     }
   }
 
@@ -215,12 +227,17 @@ export async function POST(
     corps: `${segments.length} bulletin(s) de paie ont été publiés sur votre espace.`,
     lien: "/client/bulletins",
   });
-  if (salariesNotifiables.length > 0) {
+  const libelleMois = moisLabel(upload.mois);
+  for (const salarie of salariesNotifiables) {
+    const corps = salarie.prenom
+      ? `Bonjour ${salarie.prenom}, votre bulletin de paie de ${libelleMois} est arrivé. Ouvrez-le pour le consulter à l'écran. Vous pouvez aussi l'enregistrer si vous voulez le garder.`
+      : `Votre bulletin de paie de ${libelleMois} est arrivé. Ouvrez-le pour le consulter à l'écran. Vous pouvez aussi l'enregistrer si vous voulez le garder.`;
     await notifier({
-      userIds: salariesNotifiables,
-      titre: `Votre bulletin de paie de ${moisLabel(upload.mois)} est disponible`,
-      corps: "Retrouvez-le dans votre espace personnel.",
-      lien: "/salarie/bulletins",
+      userIds: [salarie.userId],
+      titre: `Votre bulletin de paie de ${libelleMois} est arrivé`,
+      corps,
+      lien: `/voir-bulletin/${salarie.bulletinId}`,
+      libelleLien: "Voir mon bulletin",
     });
   }
 

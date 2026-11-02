@@ -34,7 +34,12 @@ export default function LoginPage() {
       setChargement(false);
       return;
     }
-    router.push("/");
+    const next = new URLSearchParams(window.location.search).get("next");
+    const dest =
+      next && next.startsWith("/") && !next.startsWith("//") && !next.includes("\\")
+        ? next
+        : "/";
+    router.push(dest);
     router.refresh();
   }
 

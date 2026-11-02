@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/auth";
+import { LecteurBulletin } from "@/components/lecteur-bulletin";
 
 export default async function VoirBulletinPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const profile = await getProfile();
-  if (!profile) redirect("/login");
   const { id } = await params;
+  const profile = await getProfile();
+  if (!profile) redirect(`/login?next=${encodeURIComponent(`/voir-bulletin/${id}`)}`);
 
   return (
     <main className="flex-1 p-4 space-y-3">
@@ -24,11 +25,7 @@ export default async function VoirBulletinPage({
           Enregistrer dans mes fichiers
         </a>
       </div>
-      <iframe
-        title="Bulletin de paie"
-        src={`/api/bulletins/${id}/telecharger?inline=1`}
-        className="h-[80vh] w-full rounded-lg border border-gray-200 bg-white"
-      />
+      <LecteurBulletin id={id} />
     </main>
   );
 }

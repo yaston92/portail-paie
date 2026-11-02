@@ -25,7 +25,7 @@ export default async function SalarieBulletinsPage() {
     <div className="space-y-6">
       <PageHeader
         titre="Mes bulletins de paie"
-        sousTitre="Choisissez un mois pour télécharger votre bulletin."
+        sousTitre="Choisissez un mois pour consulter votre bulletin."
       />
       {moisListe.length === 0 ? (
         <EmptyState message="Aucun bulletin disponible pour le moment." />

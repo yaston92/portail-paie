@@ -91,11 +91,14 @@ export function boutonEmail(href: string, libelle: string): string {
   );
 }
 
-export function gabaritEmail(titre: string, corps: string, lien?: string): string {
+export function gabaritEmail(
+  titre: string,
+  corps: string,
+  lien?: string,
+  libelleLien = "Ouvrir le portail"
+): string {
   const couleur = BRAND.primary;
-  const bouton = lien
-    ? boutonEmail(urlAbsolueEmail(lien), "Ouvrir le portail")
-    : "";
+  const bouton = lien ? boutonEmail(urlAbsolueEmail(lien), libelleLien) : "";
   return `
   <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;color:#111;line-height:1.5">
     <h2 style="color:${couleur}">${titre}</h2>

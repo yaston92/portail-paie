@@ -6,6 +6,8 @@ interface NotifyParams {
   titre: string;
   corps: string;
   lien?: string;
+  /** Texte du bouton dans l'email. */
+  libelleLien?: string;
   email?: boolean;
 }
 
@@ -124,7 +126,14 @@ export async function destinatairesClientsParDossier(
 }
 
 /** Crée des notifications in-app et envoie l'email correspondant. */
-export async function notifier({ userIds, titre, corps, lien, email = true }: NotifyParams) {
+export async function notifier({
+  userIds,
+  titre,
+  corps,
+  lien,
+  libelleLien,
+  email = true,
+}: NotifyParams) {
   if (userIds.length === 0) return;
   const admin = createAdminClient();
 
@@ -151,7 +160,7 @@ export async function notifier({ userIds, titre, corps, lien, email = true }: No
       await envoyerEmail({
         to: destinataires,
         subject: titre,
-        html: gabaritEmail(titre, corps, lien),
+        html: gabaritEmail(titre, corps, lien, libelleLien),
       });
     }
   }

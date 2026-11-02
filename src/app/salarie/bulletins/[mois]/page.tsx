@@ -30,7 +30,7 @@ export default async function SalarieBulletinsMoisPage({
     <div className="space-y-6">
       <PageHeader
         titre={moisLabel(mois)}
-        sousTitre="Téléchargez votre bulletin de paie."
+        sousTitre="Ouvrez votre bulletin pour le lire. Vous pouvez aussi l'enregistrer."
         actions={
           <Link
             href="/salarie/bulletins"
@@ -52,7 +52,12 @@ export default async function SalarieBulletinsMoisPage({
                   className="px-5 py-3.5 flex items-center justify-between gap-3"
                 >
                   <span>
-                    <span className="font-medium">{b.nom_fichier}</span>
+                    <Link
+                      href={`/voir-bulletin/${b.id}`}
+                      className="font-medium text-blue-800 hover:underline"
+                    >
+                      {b.nom_fichier}
+                    </Link>
                     <span className="text-gray-400 ml-2 text-xs">
                       publié le {formatDate(b.published_at.slice(0, 10))}
                     </span>
