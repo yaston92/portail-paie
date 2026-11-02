@@ -248,6 +248,13 @@ export function SegmentsControle({
     <div className="space-y-4">
       {erreur && <Alert variant="error">{erreur}</Alert>}
       {message && <Alert variant="success">{message}</Alert>}
+      {segments.length > 0 && segments.every((s) => !s.texte_apercu?.trim()) && (
+        <Alert variant="error">
+          Le texte de ce PDF n&apos;a pas pu être lu, le découpage par salarié est
+          donc impossible. Réexportez les bulletins depuis le logiciel de paie,
+          en PDF avec le texte sélectionnable.
+        </Alert>
+      )}
 
       {!peutModifier && !publie && (
         <Alert>

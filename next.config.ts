@@ -53,7 +53,12 @@ const nextConfig: NextConfig = {
     "*.trycloudflare.com",
   ],
   // pdfjs-dist doit rester external (fonts + legacy ESM Node)
-  serverExternalPackages: ["pdfjs-dist", "@napi-rs/canvas"],
+  serverExternalPackages: ["pdfjs-dist"],
+  // geometry.js est du JS pur : pdfjs en a besoin pour lire le texte des bulletins.
+  outputFileTracingIncludes: {
+    "/api/bulletins/**/*": ["./node_modules/@napi-rs/canvas/geometry.js"],
+    "/api/salarie/solde": ["./node_modules/@napi-rs/canvas/geometry.js"],
+  },
   // Uploads embauche (PDF / photos) : défaut proxy = 10 Mo → corps tronqué → FormData cassé
   experimental: {
     proxyClientMaxBodySize: "50mb",

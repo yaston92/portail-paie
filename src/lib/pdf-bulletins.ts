@@ -1,8 +1,37 @@
 import path from "path";
 import { pathToFileURL } from "url";
+import { DOMMatrix, DOMPoint, DOMRect } from "@napi-rs/canvas/geometry.js";
 import { PDFDocument } from "pdf-lib";
 import { racineNir } from "@/lib/format";
 import type { Salarie } from "@/lib/types";
+
+/**
+ * pdfjs lit `DOMMatrix` dès son chargement. Le binaire de canvas n'est pas
+ * dans la fonction Vercel : sans ces classes, l'import échoue et le bulletin
+ * est enregistré sans texte, donc sans salarié.
+ */
+function assurerGeometriePdf() {
+  const g = globalThis as unknown as Record<string, unknown>;
+  if (typeof g.DOMMatrix !== "function") g.DOMMatrix = DOMMatrix;
+  if (typeof g.DOMPoint !== "function") g.DOMPoint = DOMPoint;
+  if (typeof g.DOMRect !== "function") g.DOMRect = DOMRect;
+  if (typeof g.Path2D !== "function") {
+    g.Path2D = class Path2D {
+      constructor(_path?: unknown) {}
+      addPath() {}
+      closePath() {}
+      moveTo() {}
+      lineTo() {}
+      bezierCurveTo() {}
+      quadraticCurveTo() {}
+      arc() {}
+      arcTo() {}
+      ellipse() {}
+      rect() {}
+      roundRect() {}
+    };
+  }
+}
 
 /** Salarié tel qu'utilisé pour apparier un bulletin (le NIR ne sort pas du serveur). */
 export type SalarieAppariable = Pick<Salarie, "id" | "nom" | "prenom" | "matricule"> & {
@@ -122,6 +151,7 @@ export async function extraireTextesPages(pdf: Buffer): Promise<string[]> {
   if (!estPdfValide(pdf)) {
     throw new Error("NOT_A_PDF");
   }
+  assurerGeometriePdf();
 
   const essais: Record<string, unknown>[] = [
     {
@@ -168,7 +198,8 @@ export async function extraireTextesPages(pdf: Buffer): Promise<string[]> {
           })
         );
       }
-      return textes;
+      if (textes.some((t) => t.trim().length > 0)) return textes;
+      derniereErreur = new Error("TEXTE_VIDE");
     } catch (e) {
       derniereErreur = e;
     } finally {

@@ -43,21 +43,31 @@ export function BulletinsUploadForm({
     }
     const mois = form.get("mois") as string; // input type=month → YYYY-MM
     form.set("mois", `${mois}-01`);
-    const res = await fetch("/api/bulletins/upload", {
-      method: "POST",
-      body: form,
-    });
-    const json = await res.json();
-    setEnvoi(false);
-    if (!res.ok) {
-      const msg = json.error ?? "Échec de l'analyse du PDF.";
+    try {
+      const res = await fetch("/api/bulletins/upload", {
+        method: "POST",
+        body: form,
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        id?: string;
+      };
+      if (!res.ok || !json.id) {
+        const msg = json.error ?? "Échec de l'analyse du PDF.";
+        setErreur(msg);
+        toastError(msg);
+        return;
+      }
+      toastSuccess("PDF analysé : contrôlez l'appariement");
+      router.push(`/cabinet/bulletins/uploads/${json.id}`);
+      router.refresh();
+    } catch {
+      const msg = "Échec de l'analyse du PDF.";
       setErreur(msg);
       toastError(msg);
-      return;
+    } finally {
+      setEnvoi(false);
     }
-    toastSuccess("PDF analysé : contrôlez l'appariement");
-    router.push(`/cabinet/bulletins/uploads/${json.id}`);
-    router.refresh();
   }
 
   return (
